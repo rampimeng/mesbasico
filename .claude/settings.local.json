@@ -4,7 +4,11 @@
       "Bash(npm install)",
       "Bash(npm run build:*)",
       "Bash(git commit:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

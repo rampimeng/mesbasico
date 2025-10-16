@@ -27,3 +27,10 @@ dist-ssr
 .env
 .env.local
 .env.production
+
+# Server backend
+server/node_modules
+server/dist
+server/.env
+server/.env.local
+server/.env.production

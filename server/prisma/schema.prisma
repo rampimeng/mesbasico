@@ -1,0 +1,364 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// EMPRESAS (Multi-Tenant)
+// ============================================
+
+model Company {
+  id              String   @id @default(uuid())
+  name            String
+  cnpj            String   @unique
+  email           String
+  contactName     String
+  contactPhone    String
+  logoUrl         String?
+  dashboardToken  String   @unique
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relações
+  users           User[]
+  groups          Group[]
+  machines        Machine[]
+  stopReasons     StopReason[]
+  auditLogs       AuditLog[]
+  pdcaPlans       PdcaPlan[]
+
+  @@map("companies")
+}
+
+// ============================================
+// USUÁRIOS
+// ============================================
+
+enum UserRole {
+  MASTER
+  ADMIN
+  SUPERVISOR
+  OPERATOR
+}
+
+model User {
+  id           String   @id @default(uuid())
+  companyId    String?
+  name         String
+  email        String   @unique
+  password     String
+  role         UserRole
+  active       Boolean  @default(true)
+  mfaEnabled   Boolean  @default(false)
+  mfaSecret    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relações
+  company      Company?   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  operatorGroups OperatorGroup[]
+  auditLogs    AuditLog[]
+  machineActivities MachineActivity[]
+
+  @@index([companyId])
+  @@index([email])
+  @@map("users")
+}
+
+// ============================================
+// GRUPOS/CÉLULAS
+// ============================================
+
+model Group {
+  id                String   @id @default(uuid())
+  companyId         String
+  name              String
+  description       String?
+  expectedCyclesPerShift Int @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relações
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  machines          Machine[]
+  operatorGroups    OperatorGroup[]
+
+  @@index([companyId])
+  @@map("groups")
+}
+
+// Tabela de relação Many-to-Many entre Operadores e Grupos
+model OperatorGroup {
+  id          String   @id @default(uuid())
+  userId      String
+  groupId     String
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@index([userId])
+  @@index([groupId])
+  @@map("operator_groups")
+}
+
+// ============================================
+// MÁQUINAS
+// ============================================
+
+enum MachineStatus {
+  IDLE
+  NORMAL_RUNNING
+  STOPPED
+  EMERGENCY
+}
+
+model Machine {
+  id                String        @id @default(uuid())
+  companyId         String
+  groupId           String?
+  name              String
+  code              String
+  numberOfMatrices  Int           @default(0)
+  standardCycleTime Int           // Em segundos
+  status            MachineStatus @default(IDLE)
+  currentOperatorId String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  // Relações
+  company           Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  group             Group?        @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  matrices          Matrix[]
+  activities        MachineActivity[]
+
+  @@index([companyId])
+  @@index([groupId])
+  @@index([status])
+  @@map("machines")
+}
+
+// ============================================
+// MATRIZES
+// ============================================
+
+enum MatrixStatus {
+  IDLE
+  RUNNING
+  STOPPED
+}
+
+model Matrix {
+  id          String       @id @default(uuid())
+  machineId   String
+  matrixNumber Int         // 1, 2, 3, 4...
+  status      MatrixStatus @default(IDLE)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relações
+  machine     Machine      @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  activities  MatrixActivity[]
+
+  @@unique([machineId, matrixNumber])
+  @@index([machineId])
+  @@map("matrices")
+}
+
+// ============================================
+// MOTIVOS DE PARADA
+// ============================================
+
+enum StopReasonCategory {
+  MAINTENANCE
+  MATERIAL
+  QUALITY
+  SETUP
+  OPERATOR
+  EMERGENCY
+  OTHER
+}
+
+model StopReason {
+  id          String              @id @default(uuid())
+  companyId   String
+  name        String
+  category    StopReasonCategory
+  description String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  // Relações
+  company     Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  machineActivities MachineActivity[]
+  matrixActivities MatrixActivity[]
+
+  @@index([companyId])
+  @@index([category])
+  @@map("stop_reasons")
+}
+
+// ============================================
+// ATIVIDADES DE MÁQUINAS (Histórico)
+// ============================================
+
+model MachineActivity {
+  id            String        @id @default(uuid())
+  machineId     String
+  operatorId    String
+  status        MachineStatus
+  stopReasonId  String?
+  startTime     DateTime      @default(now())
+  endTime       DateTime?
+  duration      Int?          // Em segundos (calculado quando endTime é definido)
+  cyclesCount   Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relações
+  machine       Machine       @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  operator      User          @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  stopReason    StopReason?   @relation(fields: [stopReasonId], references: [id], onDelete: SetNull)
+
+  @@index([machineId])
+  @@index([operatorId])
+  @@index([startTime])
+  @@map("machine_activities")
+}
+
+// ============================================
+// ATIVIDADES DE MATRIZES (Histórico)
+// ============================================
+
+model MatrixActivity {
+  id            String       @id @default(uuid())
+  matrixId      String
+  status        MatrixStatus
+  stopReasonId  String?
+  startTime     DateTime     @default(now())
+  endTime       DateTime?
+  duration      Int?         // Em segundos
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relações
+  matrix        Matrix       @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+  stopReason    StopReason?  @relation(fields: [stopReasonId], references: [id], onDelete: SetNull)
+
+  @@index([matrixId])
+  @@index([startTime])
+  @@map("matrix_activities")
+}
+
+// ============================================
+// AUDITORIA
+// ============================================
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  START_MACHINE
+  STOP_MACHINE
+  EMERGENCY_STOP
+  CYCLE_COMPLETE
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  companyId   String?
+  userId      String
+  action      AuditAction
+  entityType  String      // "Machine", "User", "Company", etc.
+  entityId    String?
+  details     Json?       // Dados adicionais em JSON
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+
+  // Relações
+  company     Company?    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================
+// PDCA (Plan-Do-Check-Act)
+// ============================================
+
+enum PdcaPhase {
+  PLAN
+  DO
+  CHECK
+  ACT
+}
+
+model PdcaPlan {
+  id          String    @id @default(uuid())
+  companyId   String
+  title       String
+  description String?
+  phase       PdcaPhase @default(PLAN)
+
+  // Período base
+  baselineStartDate DateTime
+  baselineEndDate   DateTime
+
+  // Escopo (filtros congelados)
+  scopeFilters Json    // { groupId?, machineId?, operatorId? }
+
+  // Baseline congelado
+  baselineData Json    // Dados de desempenho do período base
+
+  // Metas
+  targetMetrics Json?  // Metas definidas para melhoria
+
+  // Resultados
+  actualResults Json?  // Resultados após implementação
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relações
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  actions     PdcaAction[]
+
+  @@index([companyId])
+  @@index([phase])
+  @@map("pdca_plans")
+}
+
+model PdcaAction {
+  id          String   @id @default(uuid())
+  planId      String
+  title       String
+  description String?
+  responsible String?
+  dueDate     DateTime?
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relações
+  plan        PdcaPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@map("pdca_actions")
+}
