@@ -17,6 +17,9 @@ const CompanyFormModal = ({ company, onClose, onSave }: CompanyFormModalProps) =
     contactPhone: '',
     logoUrl: '',
     active: true,
+    adminName: '',
+    adminEmail: '',
+    adminPassword: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -31,6 +34,9 @@ const CompanyFormModal = ({ company, onClose, onSave }: CompanyFormModalProps) =
         contactPhone: (company as any).contactPhone || '',
         logoUrl: company.logoUrl || '',
         active: company.active,
+        adminName: '',
+        adminEmail: '',
+        adminPassword: '',
       });
     }
   }, [company]);
@@ -60,6 +66,25 @@ const CompanyFormModal = ({ company, onClose, onSave }: CompanyFormModalProps) =
 
     if (!formData.contactPhone.trim()) {
       newErrors.contactPhone = 'Telefone é obrigatório';
+    }
+
+    // Validations for admin fields (only when creating new company)
+    if (!company) {
+      if (!formData.adminName.trim()) {
+        newErrors.adminName = 'Nome do Administrador é obrigatório';
+      }
+
+      if (!formData.adminEmail.trim()) {
+        newErrors.adminEmail = 'E-mail do Administrador é obrigatório';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.adminEmail)) {
+        newErrors.adminEmail = 'E-mail do Administrador inválido';
+      }
+
+      if (!formData.adminPassword.trim()) {
+        newErrors.adminPassword = 'Senha do Administrador é obrigatória';
+      } else if (formData.adminPassword.length < 6) {
+        newErrors.adminPassword = 'Senha deve ter no mínimo 6 caracteres';
+      }
     }
 
     setErrors(newErrors);
@@ -260,6 +285,71 @@ const CompanyFormModal = ({ company, onClose, onSave }: CompanyFormModalProps) =
               </div>
             )}
           </div>
+
+          {/* Admin fields - Only show when creating new company */}
+          {!company && (
+            <>
+              <div className="border-t pt-6 mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Dados do Administrador da Empresa
+                </h3>
+
+                {/* Admin Name */}
+                <div className="mb-4">
+                  <label className="label">
+                    <User className="inline w-4 h-4 mr-2" />
+                    Nome do Administrador *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.adminName}
+                    onChange={(e) => setFormData({ ...formData, adminName: e.target.value })}
+                    className={`input ${errors.adminName ? 'border-red-500' : ''}`}
+                    placeholder="Nome do administrador"
+                  />
+                  {errors.adminName && (
+                    <p className="text-red-500 text-sm mt-1">{errors.adminName}</p>
+                  )}
+                </div>
+
+                {/* Admin Email */}
+                <div className="mb-4">
+                  <label className="label">
+                    <Mail className="inline w-4 h-4 mr-2" />
+                    E-mail do Administrador *
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.adminEmail}
+                    onChange={(e) => setFormData({ ...formData, adminEmail: e.target.value })}
+                    className={`input ${errors.adminEmail ? 'border-red-500' : ''}`}
+                    placeholder="admin@empresa.com"
+                  />
+                  {errors.adminEmail && (
+                    <p className="text-red-500 text-sm mt-1">{errors.adminEmail}</p>
+                  )}
+                </div>
+
+                {/* Admin Password */}
+                <div>
+                  <label className="label">
+                    <User className="inline w-4 h-4 mr-2" />
+                    Senha do Administrador *
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.adminPassword}
+                    onChange={(e) => setFormData({ ...formData, adminPassword: e.target.value })}
+                    className={`input ${errors.adminPassword ? 'border-red-500' : ''}`}
+                    placeholder="Senha (mínimo 6 caracteres)"
+                  />
+                  {errors.adminPassword && (
+                    <p className="text-red-500 text-sm mt-1">{errors.adminPassword}</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Status */}
           <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">

@@ -13,11 +13,15 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
   const company = useAuthStore((state) => state.company);
   const addGroup = useRegistrationStore((state) => state.addGroup);
   const updateGroup = useRegistrationStore((state) => state.updateGroup);
+  const getOperators = useRegistrationStore((state) => state.getOperators);
+
+  const operators = getOperators(company?.id || '');
 
   const [formData, setFormData] = useState({
     name: group?.name || '',
     description: group?.description || '',
     cyclesPerShift: group?.cyclesPerShift || 0,
+    operatorIds: group?.operatorIds || [],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -28,9 +32,19 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
         name: group.name,
         description: group.description || '',
         cyclesPerShift: group.cyclesPerShift || 0,
+        operatorIds: group.operatorIds || [],
       });
     }
   }, [group]);
+
+  const handleOperatorToggle = (operatorId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      operatorIds: prev.operatorIds.includes(operatorId)
+        ? prev.operatorIds.filter((id) => id !== operatorId)
+        : [...prev.operatorIds, operatorId],
+    }));
+  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -124,6 +138,43 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
             />
             <p className="mt-1 text-sm text-gray-500">
               Meta de giros que devem ser realizados por turno nesta célula
+            </p>
+          </div>
+
+          {/* Operadores */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Operadores Vinculados
+            </label>
+            <div className="border border-gray-300 rounded-lg p-4 max-h-48 overflow-y-auto">
+              {operators.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  Nenhum operador cadastrado ainda
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {operators.map((operator) => (
+                    <label
+                      key={operator.id}
+                      className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.operatorIds.includes(operator.id)}
+                        onChange={() => handleOperatorToggle(operator.id)}
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{operator.name}</p>
+                        <p className="text-xs text-gray-500">{operator.email}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-gray-500">
+              Selecione os operadores que fazem parte desta célula
             </p>
           </div>
 

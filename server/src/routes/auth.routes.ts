@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { AuthController } from '../controllers/auth.controller';
+import { AuthSupabaseController } from '../controllers/auth.supabase.controller';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
-const authController = new AuthController();
+const authController = new AuthSupabaseController();
 
 // Public routes
 router.post('/login', (req, res) => authController.login(req, res));

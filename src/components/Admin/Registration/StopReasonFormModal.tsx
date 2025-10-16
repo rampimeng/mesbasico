@@ -21,6 +21,8 @@ const StopReasonFormModal = ({ reason, onClose }: StopReasonFormModalProps) => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (reason) {
@@ -39,16 +41,29 @@ const StopReasonFormModal = ({ reason, onClose }: StopReasonFormModalProps) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm() || !company) return;
 
-    if (reason) {
-      updateStopReason(reason.id, formData);
-    } else {
-      addStopReason({ companyId: company.id, ...formData });
+    setIsSubmitting(true);
+    setApiError('');
+
+    try {
+      console.log('🔍 Submitting stop reason data:', formData);
+
+      if (reason) {
+        await updateStopReason(reason.id, formData);
+      } else {
+        await addStopReason({ companyId: company.id, ...formData });
+      }
+      console.log('✅ Stop reason saved successfully');
+      onClose();
+    } catch (error: any) {
+      console.error('❌ Error saving stop reason:', error);
+      setApiError(error.message || 'Erro ao salvar motivo de parada');
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose();
   };
 
   return (
@@ -62,6 +77,12 @@ const StopReasonFormModal = ({ reason, onClose }: StopReasonFormModalProps) => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {apiError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {apiError}
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Nome do Motivo *</label>
             <input type="text" value={formData.name}
@@ -90,12 +111,14 @@ const StopReasonFormModal = ({ reason, onClose }: StopReasonFormModalProps) => {
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button type="button" onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              disabled={isSubmitting}>
               Cancelar
             </button>
             <button type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              {reason ? 'Salvar' : 'Cadastrar'}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting}>
+              {isSubmitting ? 'Salvando...' : (reason ? 'Salvar' : 'Cadastrar')}
             </button>
           </div>
         </form>

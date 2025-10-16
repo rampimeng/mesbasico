@@ -8,7 +8,20 @@
       "Bash(git remote add:*)",
       "Bash(git push:*)",
       "Bash(npm init:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run prisma:generate:*)",
+      "Bash(npm run prisma:migrate:*)",
+      "Bash(npx prisma db pull:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(npm run seed:supabase:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(tasklist:*)",
+      "Bash(powershell -Command \"Stop-Process -Id 5420,34592 -Force\")",
+      "Bash(npx ts-node:*)",
+      "Bash(npm run verify-master-password:*)"
     ],
     "deny": [],
     "ask": []

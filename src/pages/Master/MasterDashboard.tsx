@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { Company } from '@/types';
-import { Building2, Plus, Edit, Power, Key, Shield, LogIn, Image, Save } from 'lucide-react';
+import { Building2, Plus, Edit, Power, Key, Shield, LogIn, Image, Save, CheckCircle, XCircle } from 'lucide-react';
 import CompanyFormModal from '@/components/Master/CompanyFormModal';
 import ChangePasswordModal from '@/components/Master/ChangePasswordModal';
+import { companiesService } from '@/services/companiesService';
 
 // Extended Company type with extra fields
 interface ExtendedCompany extends Company {
@@ -17,53 +18,31 @@ const MasterDashboard = () => {
   const { user, logout, appLogoUrl, setAppLogoUrl } = useAuthStore();
 
   const [appLogo, setAppLogo] = useState(appLogoUrl);
-
-  // Mock companies with extended data
-  const [companies, setCompanies] = useState<ExtendedCompany[]>([
-    {
-      id: '1',
-      name: 'Empresa Demo LTDA',
-      cnpj: '12.345.678/0001-90',
-      email: 'contato@empresademo.com',
-      contactName: 'João Silva',
-      contactPhone: '(11) 98765-4321',
-      active: true,
-      adminPassword: 'admin123',
-      dashboardToken: 'dash_1234567890_abc123def456',
-      createdAt: new Date('2024-01-15'),
-      updatedAt: new Date('2024-01-15'),
-    },
-    {
-      id: '2',
-      name: 'Indústria ABC S.A.',
-      cnpj: '98.765.432/0001-10',
-      email: 'contato@industriaabc.com',
-      contactName: 'Maria Santos',
-      contactPhone: '(21) 91234-5678',
-      active: true,
-      adminPassword: 'abc123',
-      dashboardToken: 'dash_9876543210_xyz789ghi012',
-      createdAt: new Date('2024-02-10'),
-      updatedAt: new Date('2024-02-10'),
-    },
-    {
-      id: '3',
-      name: 'Fábrica XYZ LTDA',
-      cnpj: '11.222.333/0001-44',
-      email: 'contato@fabricaxyz.com',
-      contactName: 'Pedro Oliveira',
-      contactPhone: '(31) 99876-5432',
-      active: false,
-      adminPassword: 'xyz123',
-      dashboardToken: 'dash_1122334455_jkl345mno678',
-      createdAt: new Date('2024-03-05'),
-      updatedAt: new Date('2024-03-05'),
-    },
-  ]);
+  const [companies, setCompanies] = useState<ExtendedCompany[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<ExtendedCompany | null>(null);
+
+  // Load companies from API
+  useEffect(() => {
+    loadCompanies();
+  }, []);
+
+  const loadCompanies = async () => {
+    try {
+      setLoading(true);
+      const data = await companiesService.getAll();
+      setCompanies(data as ExtendedCompany[]);
+      setError('');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao carregar empresas');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNewCompany = () => {
     setSelectedCompany(null);
@@ -75,30 +54,43 @@ const MasterDashboard = () => {
     setShowCompanyModal(true);
   };
 
-  const generateDashboardToken = () => {
-    // Gerar token único e seguro
-    return `dash_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-  };
+  const handleSaveCompany = async (companyData: Partial<ExtendedCompany>) => {
+    try {
+      if (selectedCompany) {
+        // Edit existing
+        await companiesService.update(selectedCompany.id, {
+          name: companyData.name,
+          cnpj: companyData.cnpj,
+          email: companyData.email,
+          contactName: companyData.contactName,
+          contactPhone: companyData.contactPhone,
+          logoUrl: companyData.logoUrl,
+          active: companyData.active,
+        });
+      } else {
+        // Create new
+        await companiesService.create({
+          name: companyData.name!,
+          cnpj: companyData.cnpj!,
+          email: companyData.email!,
+          contactName: companyData.contactName!,
+          contactPhone: companyData.contactPhone!,
+          logoUrl: companyData.logoUrl,
+          adminName: (companyData as any).adminName,
+          adminEmail: (companyData as any).adminEmail,
+          adminPassword: (companyData as any).adminPassword,
+        });
+      }
 
-  const handleSaveCompany = (companyData: Partial<ExtendedCompany>) => {
-    if (selectedCompany) {
-      // Edit existing
-      setCompanies(
-        companies.map((c) =>
-          c.id === selectedCompany.id ? { ...c, ...companyData } : c
-        )
-      );
-    } else {
-      // Add new - gerar token do dashboard automaticamente
-      const newCompany = {
-        ...companyData,
-        adminPassword: 'admin123',
-        dashboardToken: generateDashboardToken(),
-      } as ExtendedCompany;
-      setCompanies([...companies, newCompany]);
+      // Reload companies
+      await loadCompanies();
+      setShowCompanyModal(false);
+      setSelectedCompany(null);
+      setError('');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao salvar empresa');
+      alert(err.message || 'Erro ao salvar empresa');
     }
-    setShowCompanyModal(false);
-    setSelectedCompany(null);
   };
 
   const handleChangePassword = (company: ExtendedCompany) => {
@@ -106,26 +98,41 @@ const MasterDashboard = () => {
     setShowPasswordModal(true);
   };
 
-  const handleSavePassword = (newPassword: string) => {
-    if (selectedCompany) {
-      setCompanies(
-        companies.map((c) =>
-          c.id === selectedCompany.id
-            ? { ...c, adminPassword: newPassword, updatedAt: new Date() }
-            : c
-        )
-      );
+  const handleSavePassword = async (newPassword: string) => {
+    if (!selectedCompany) return;
+
+    try {
+      await companiesService.changeAdminPassword(selectedCompany.id, { newPassword });
+      setShowPasswordModal(false);
+      setSelectedCompany(null);
+      setError('');
+      alert('Senha do administrador alterada com sucesso!');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao alterar senha');
+      alert(err.message || 'Erro ao alterar senha');
     }
-    setShowPasswordModal(false);
-    setSelectedCompany(null);
   };
 
-  const handleToggleActive = (companyId: string) => {
-    setCompanies(
-      companies.map((c) =>
-        c.id === companyId ? { ...c, active: !c.active, updatedAt: new Date() } : c
-      )
-    );
+  const handleToggleActive = async (companyId: string) => {
+    try {
+      await companiesService.toggleStatus(companyId);
+      await loadCompanies();
+      setError('');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao alterar status');
+      alert(err.message || 'Erro ao alterar status');
+    }
+  };
+
+  const handleTogglePDCA = async (companyId: string) => {
+    try {
+      await companiesService.togglePDCA(companyId);
+      await loadCompanies();
+      setError('');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao alterar status do PDCA');
+      alert(err.message || 'Erro ao alterar status do PDCA');
+    }
   };
 
   const handleAccessCompany = (company: ExtendedCompany) => {
@@ -246,6 +253,13 @@ const MasterDashboard = () => {
           </div>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="card bg-white">
@@ -293,117 +307,147 @@ const MasterDashboard = () => {
             </button>
           </div>
 
-          <div className="space-y-4">
-            {companies.map((company) => (
-              <div
-                key={company.id}
-                className={`p-6 rounded-xl border-2 transition-all ${
-                  company.active
-                    ? 'bg-white border-green-200 hover:border-green-400'
-                    : 'bg-gray-50 border-gray-300'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div
-                      className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                        company.active ? 'bg-green-100' : 'bg-gray-200'
-                      }`}
-                    >
-                      <Building2
-                        className={`w-8 h-8 ${
-                          company.active ? 'text-green-600' : 'text-gray-500'
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">Carregando empresas...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {companies.map((company) => (
+                <div
+                  key={company.id}
+                  className={`p-6 rounded-xl border-2 transition-all ${
+                    company.active
+                      ? 'bg-white border-green-200 hover:border-green-400'
+                      : 'bg-gray-50 border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4 flex-1">
+                      <div
+                        className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                          company.active ? 'bg-green-100' : 'bg-gray-200'
                         }`}
-                      />
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-bold text-gray-900">
-                          {company.name}
-                        </h3>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            company.active
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-red-100 text-red-700'
+                      >
+                        <Building2
+                          className={`w-8 h-8 ${
+                            company.active ? 'text-green-600' : 'text-gray-500'
                           }`}
-                        >
-                          {company.active ? 'Ativa' : 'Inativa'}
-                        </span>
+                        />
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-                        <p><strong>CNPJ:</strong> {company.cnpj}</p>
-                        <p><strong>E-mail:</strong> {company.email}</p>
-                        <p><strong>Contato:</strong> {company.contactName}</p>
-                        <p><strong>Telefone:</strong> {company.contactPhone}</p>
-                      </div>
-
-                      {company.dashboardToken && (
-                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <p className="text-xs text-blue-800 font-semibold mb-1">
-                            Dashboard de Controle:
-                          </p>
-                          <a
-                            href={`${window.location.origin}/control/${company.dashboardToken}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:text-blue-800 underline break-all"
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-xl font-bold text-gray-900">
+                            {company.name}
+                          </h3>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              company.active
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}
                           >
-                            {`${window.location.origin}/control/${company.dashboardToken}`}
-                          </a>
+                            {company.active ? 'Ativa' : 'Inativa'}
+                          </span>
                         </div>
-                      )}
 
-                      <div className="text-xs text-gray-500 mt-3">
-                        <p>Criada em: {company.createdAt.toLocaleDateString('pt-BR')}</p>
-                        <p>Última atualização: {company.updatedAt.toLocaleDateString('pt-BR')}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                          <p><strong>CNPJ:</strong> {company.cnpj}</p>
+                          <p><strong>E-mail:</strong> {company.email}</p>
+                          <p><strong>Contato:</strong> {company.contactName}</p>
+                          <p><strong>Telefone:</strong> {company.contactPhone}</p>
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-700">PDCA:</span>
+                          <button
+                            onClick={() => handleTogglePDCA(company.id)}
+                            className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                              company.pdcaEnabled
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {company.pdcaEnabled ? (
+                              <>
+                                <CheckCircle className="w-3 h-3" />
+                                Habilitado
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="w-3 h-3" />
+                                Desabilitado
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {company.dashboardToken && (
+                          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs text-blue-800 font-semibold mb-1">
+                              Dashboard de Controle:
+                            </p>
+                            <a
+                              href={`${window.location.origin}/control/${company.dashboardToken}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:text-blue-800 underline break-all"
+                            >
+                              {`${window.location.origin}/control/${company.dashboardToken}`}
+                            </a>
+                          </div>
+                        )}
+
+                        <div className="text-xs text-gray-500 mt-3">
+                          <p>Criada em: {new Date(company.createdAt).toLocaleDateString('pt-BR')}</p>
+                          <p>Última atualização: {new Date(company.updatedAt).toLocaleDateString('pt-BR')}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex flex-col gap-2 ml-4">
-                    <button
-                      onClick={() => handleAccessCompany(company)}
-                      className="btn-primary flex items-center gap-2 text-sm whitespace-nowrap"
-                    >
-                      <LogIn className="w-4 h-4" />
-                      Acessar
-                    </button>
-                    <button
-                      onClick={() => handleEditCompany(company)}
-                      className="btn-secondary flex items-center gap-2 text-sm whitespace-nowrap"
-                    >
-                      <Edit className="w-4 h-4" />
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleChangePassword(company)}
-                      className="btn-secondary flex items-center gap-2 text-sm whitespace-nowrap"
-                    >
-                      <Key className="w-4 h-4" />
-                      Trocar Senha
-                    </button>
-                    <button
-                      onClick={() => handleToggleActive(company.id)}
-                      className={`btn flex items-center gap-2 text-sm whitespace-nowrap ${
-                        company.active
-                          ? 'bg-red-500 hover:bg-red-600 text-white'
-                          : 'bg-green-500 hover:bg-green-600 text-white'
-                      }`}
-                    >
-                      <Power className="w-4 h-4" />
-                      {company.active ? 'Desativar' : 'Ativar'}
-                    </button>
+                    {/* Actions */}
+                    <div className="flex flex-col gap-2 ml-4">
+                      <button
+                        onClick={() => handleAccessCompany(company)}
+                        className="btn-primary flex items-center gap-2 text-sm whitespace-nowrap"
+                      >
+                        <LogIn className="w-4 h-4" />
+                        Acessar
+                      </button>
+                      <button
+                        onClick={() => handleEditCompany(company)}
+                        className="btn-secondary flex items-center gap-2 text-sm whitespace-nowrap"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleChangePassword(company)}
+                        className="btn-secondary flex items-center gap-2 text-sm whitespace-nowrap"
+                      >
+                        <Key className="w-4 h-4" />
+                        Trocar Senha
+                      </button>
+                      <button
+                        onClick={() => handleToggleActive(company.id)}
+                        className={`btn flex items-center gap-2 text-sm whitespace-nowrap ${
+                          company.active
+                            ? 'bg-red-500 hover:bg-red-600 text-white'
+                            : 'bg-green-500 hover:bg-green-600 text-white'
+                        }`}
+                      >
+                        <Power className="w-4 h-4" />
+                        {company.active ? 'Desativar' : 'Ativar'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {companies.length === 0 && (
+          {!loading && companies.length === 0 && (
             <div className="text-center py-12">
               <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 text-lg">Nenhuma empresa cadastrada</p>

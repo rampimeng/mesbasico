@@ -1,22 +1,12 @@
 import { useState } from 'react';
-import { useMachineStore } from '@/store/machineStore';
-import { Monitor, User, Eye } from 'lucide-react';
+import { Monitor, User, AlertCircle } from 'lucide-react';
 import OperatorMirrorView from './OperatorMirrorView';
 
 const OperatorMonitoring = () => {
-  const { machines } = useMachineStore();
   const [selectedOperator, setSelectedOperator] = useState<string | null>(null);
 
-  // Mock operators with cell information
-  const activeOperators = [
-    { id: '4', name: 'Operador João', cell: 'Célula Injetoras', status: 'active' },
-    { id: '5', name: 'Operador Maria', cell: 'Célula Sopradores', status: 'active' },
-    { id: '6', name: 'Operador Pedro', cell: 'Célula Montagem', status: 'idle' },
-  ];
-
-  const getOperatorMachines = (operatorId: string) => {
-    return machines.filter((m) => m.currentOperatorId === operatorId);
-  };
+  // No mock data - will load from API when available
+  const activeOperators: any[] = [];
 
   if (selectedOperator) {
     const operator = activeOperators.find((op) => op.id === selectedOperator);
@@ -46,78 +36,32 @@ const OperatorMonitoring = () => {
         </div>
       </div>
 
-      {/* Operators Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {activeOperators.map((operator) => {
-          const operatorMachines = getOperatorMachines(operator.id);
-          const runningMachines = operatorMachines.filter(
-            (m) => m.status === 'NORMAL_RUNNING'
-          ).length;
-
-          return (
-            <div
-              key={operator.id}
-              className="card hover:shadow-lg transition-shadow cursor-pointer"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                    <User className="w-6 h-6 text-primary-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {operator.name}
-                    </h3>
-                    <p className="text-sm text-gray-600">{operator.cell}</p>
-                  </div>
-                </div>
-
-                <div
-                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    operator.status === 'active'
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  {operator.status === 'active' ? 'Ativo' : 'Ocioso'}
-                </div>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className="text-sm text-gray-600">Máquinas</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {operatorMachines.length}
-                  </p>
-                </div>
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <p className="text-sm text-green-600">Em Giro</p>
-                  <p className="text-2xl font-bold text-green-700">
-                    {runningMachines}
-                  </p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <button
-                onClick={() => setSelectedOperator(operator.id)}
-                className="btn-primary w-full flex items-center justify-center gap-2"
-              >
-                <Eye className="w-5 h-5" />
-                Espelhar e Controlar
-              </button>
-            </div>
-          );
-        })}
+      {/* Empty State */}
+      <div className="card">
+        <div className="flex flex-col items-center justify-center py-16 bg-gray-50 rounded-lg">
+          <User className="w-20 h-20 text-gray-300 mb-4" />
+          <p className="text-gray-500 text-lg font-semibold">Nenhum operador ativo</p>
+          <p className="text-gray-400 mt-2 text-center max-w-md">
+            Operadores aparecerão aqui quando iniciarem a produção
+          </p>
+        </div>
       </div>
 
-      {activeOperators.length === 0 && (
-        <div className="text-center py-12">
-          <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg">Nenhum operador ativo no momento</p>
+      {/* Helpful Info Card */}
+      <div className="card bg-blue-50 border-2 border-blue-200">
+        <div className="flex items-start gap-4">
+          <AlertCircle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
+          <div>
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">Como funciona o monitoramento?</h3>
+            <ul className="text-blue-800 space-y-2 text-sm">
+              <li><strong>1.</strong> Cadastre operadores e vincule-os a grupos/células nas <strong>Configurações</strong></li>
+              <li><strong>2.</strong> Operadores fazem login e iniciam a produção</li>
+              <li><strong>3.</strong> Você poderá ver e controlar em tempo real todas as máquinas de cada operador</li>
+              <li><strong>4.</strong> Use o botão "Espelhar e Controlar" para interagir com a tela do operador</li>
+            </ul>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

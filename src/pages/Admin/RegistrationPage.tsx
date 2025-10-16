@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Users, Factory, Grid3x3, AlertTriangle } from 'lucide-react';
 import { useRegistrationStore } from '@/store/registrationStore';
+import { useAuthStore } from '@/store/authStore';
 import OperatorsList from '@/components/Admin/Registration/OperatorsList';
 import MachinesList from '@/components/Admin/Registration/MachinesList';
 import GroupsList from '@/components/Admin/Registration/GroupsList';
@@ -10,12 +11,16 @@ type TabType = 'operators' | 'machines' | 'groups' | 'stopReasons';
 
 const RegistrationPage = () => {
   const [activeTab, setActiveTab] = useState<TabType>('operators');
-  const initializeMockData = useRegistrationStore((state) => state.initializeMockData);
+  const loadAll = useRegistrationStore((state) => state.loadAll);
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
-    // Inicializar dados mockados
-    initializeMockData();
-  }, [initializeMockData]);
+    // Carregar dados reais da API
+    const companyId = user?.companyId;
+    if (companyId) {
+      loadAll(companyId);
+    }
+  }, [loadAll, user?.companyId]);
 
   const tabs = [
     {

@@ -30,8 +30,17 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
   // Admin tem acesso adicional
   if (user?.role === 'ADMIN') {
     menuItems.push(
-      { icon: Settings, label: 'Cadastros', path: '/admin/settings' },
-      { icon: TrendingUp, label: 'PDCA', path: '/admin/pdca' },
+      { icon: Settings, label: 'Cadastros', path: '/admin/settings' }
+    );
+
+    // PDCA só aparece se habilitado para a empresa
+    if (company?.pdcaEnabled) {
+      menuItems.push(
+        { icon: TrendingUp, label: 'PDCA', path: '/admin/pdca' }
+      );
+    }
+
+    menuItems.push(
       { icon: ClipboardList, label: 'Auditoria', path: '/admin/audit' }
     );
   }
@@ -123,6 +132,15 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
             <LogOut className="w-5 h-5 flex-shrink-0" />
             {isOpen && <span className="font-medium">Sair</span>}
           </button>
+
+          {/* Company Name */}
+          {isOpen && company && (
+            <div className="mt-3 px-2 pt-3 border-t border-primary-700">
+              <p className="text-xs text-primary-300 truncate" title={company.name}>
+                {company.name}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </aside>

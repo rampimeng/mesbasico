@@ -26,6 +26,7 @@ export interface Company {
   active: boolean;
   logoUrl?: string; // URL do logotipo da empresa
   dashboardToken?: string; // Token único para acesso ao dashboard de controle
+  pdcaEnabled?: boolean; // Habilita/desabilita funcionalidade PDCA para esta empresa
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +53,7 @@ export interface Group {
   name: string;
   description?: string;
   cyclesPerShift?: number; // Giros esperados por turno
+  operatorIds: string[]; // Operadores vinculados a esta célula
   createdAt: Date;
   updatedAt: Date;
 }

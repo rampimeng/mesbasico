@@ -1,63 +1,25 @@
 import { create } from 'zustand';
 import { Machine, Matrix, MachineStatus, MatrixStatus, ProductionSession } from '@/types';
+import { machinesService } from '@/services/machinesService';
+import { productionService } from '@/services/productionService';
 
 interface MachineStore {
   machines: Machine[];
   matrices: Matrix[];
   activeSessions: ProductionSession[];
+  loading: boolean;
+  error: string | null;
+  loadMyMachines: () => Promise<void>;
   setMachines: (machines: Machine[]) => void;
   setMatrices: (matrices: Matrix[]) => void;
-  updateMachineStatus: (machineId: string, status: MachineStatus, operatorId?: string) => void;
-  updateMatrixStatus: (matrixId: string, status: MatrixStatus, stopReasonId?: string) => void;
-  startSession: (machineId: string, operatorId: string) => void;
+  updateMachineStatus: (machineId: string, status: MachineStatus, operatorId?: string, stopReasonId?: string) => Promise<void>;
+  updateMatrixStatus: (matrixId: string, status: MatrixStatus, stopReasonId?: string) => Promise<void>;
+  startSession: (machineId: string, operatorId: string) => Promise<void>;
   endSession: (sessionId: string) => void;
   getMachinesByOperator: (operatorId: string) => Machine[];
   getMatricesByMachine: (machineId: string) => Matrix[];
   isMachineInUse: (machineId: string) => boolean;
 }
-
-// Mock data
-const mockMachines: Machine[] = [
-  {
-    id: 'm1',
-    companyId: '1',
-    name: 'Injetora 01',
-    code: 'INJ-001',
-    groupId: 'g1',
-    numberOfMatrices: 4,
-    standardCycleTime: 120, // 2 minutos
-    operatorIds: ['4'], // Operador João
-    status: MachineStatus.IDLE,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'm2',
-    companyId: '1',
-    name: 'Injetora 02',
-    code: 'INJ-002',
-    groupId: 'g1',
-    numberOfMatrices: 3,
-    standardCycleTime: 90,
-    operatorIds: ['4'],
-    status: MachineStatus.IDLE,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'm3',
-    companyId: '1',
-    name: 'Soprador 01',
-    code: 'SOP-001',
-    groupId: 'g2',
-    numberOfMatrices: 2,
-    standardCycleTime: 60,
-    operatorIds: ['4'],
-    status: MachineStatus.IDLE,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
 
 const generateMatrices = (machines: Machine[]): Matrix[] => {
   const matrices: Matrix[] = [];
@@ -78,78 +40,147 @@ const generateMatrices = (machines: Machine[]): Matrix[] => {
 };
 
 export const useMachineStore = create<MachineStore>((set, get) => ({
-  machines: mockMachines,
-  matrices: generateMatrices(mockMachines),
+  machines: [],
+  matrices: [],
   activeSessions: [],
+  loading: false,
+  error: null,
 
-  setMachines: (machines) => set({ machines }),
+  loadMyMachines: async () => {
+    try {
+      set({ loading: true, error: null });
+      console.log('🔄 Loading my machines...');
+      const machines = await machinesService.getMyMachines();
+      console.log('✅ Loaded machines:', machines);
+      const matrices = generateMatrices(machines);
+      set({ machines, matrices, loading: false });
+    } catch (error: any) {
+      console.error('❌ Error loading machines:', error);
+      set({ error: error.message, loading: false });
+    }
+  },
+
+  setMachines: (machines) => {
+    const matrices = generateMatrices(machines);
+    set({ machines, matrices });
+  },
 
   setMatrices: (matrices) => set({ matrices }),
 
-  updateMachineStatus: (machineId, status, operatorId) => {
-    set((state) => ({
-      machines: state.machines.map((m) =>
-        m.id === machineId
-          ? {
-              ...m,
-              status,
-              currentOperatorId: status === MachineStatus.IDLE ? undefined : operatorId,
-              sessionStartedAt: status === MachineStatus.IDLE ? undefined : new Date(),
-            }
-          : m
-      ),
-    }));
+  updateMachineStatus: async (machineId, status, operatorId, stopReasonId) => {
+    try {
+      // Call backend API
+      await productionService.updateMachineStatus(machineId, status, stopReasonId);
 
-    // Atualizar status de todas as matrizes
-    if (status === MachineStatus.NORMAL_RUNNING || status === MachineStatus.EMERGENCY) {
-      const newMatrixStatus = status === MachineStatus.EMERGENCY ? MatrixStatus.STOPPED : MatrixStatus.RUNNING;
+      // Update local state
+      set((state) => ({
+        machines: state.machines.map((m) =>
+          m.id === machineId
+            ? {
+                ...m,
+                status,
+                currentOperatorId: status === MachineStatus.IDLE ? undefined : operatorId,
+                sessionStartedAt: status === MachineStatus.IDLE ? undefined : new Date(),
+              }
+            : m
+        ),
+      }));
+
+      // Atualizar status de todas as matrizes
+      if (status === MachineStatus.NORMAL_RUNNING || status === MachineStatus.EMERGENCY) {
+        const newMatrixStatus = status === MachineStatus.EMERGENCY ? MatrixStatus.STOPPED : MatrixStatus.RUNNING;
+        set((state) => ({
+          matrices: state.matrices.map((mat) =>
+            mat.machineId === machineId
+              ? {
+                  ...mat,
+                  status: newMatrixStatus,
+                  lastStatusChangeAt: new Date(),
+                  currentStopReasonId: status === MachineStatus.EMERGENCY ? mat.currentStopReasonId : undefined,
+                }
+              : mat
+          ),
+        }));
+      }
+    } catch (error: any) {
+      console.error('❌ Error updating machine status:', error);
+      set({ error: error.message });
+    }
+  },
+
+  updateMatrixStatus: async (matrixId, status, stopReasonId) => {
+    try {
+      // Get matrix info
+      const matrix = get().matrices.find((m) => m.id === matrixId);
+      if (!matrix) {
+        console.error('❌ Matrix not found:', matrixId);
+        return;
+      }
+
+      // Call backend API
+      await productionService.updateMatrixStatus(
+        matrixId,
+        matrix.machineId,
+        matrix.matrixNumber,
+        status,
+        stopReasonId
+      );
+
+      // Update local state
+      set((state) => ({
+        matrices: state.matrices.map((mat) =>
+          mat.id === matrixId
+            ? {
+                ...mat,
+                status,
+                currentStopReasonId: status === MatrixStatus.STOPPED ? stopReasonId : undefined,
+                lastStatusChangeAt: new Date(),
+              }
+            : mat
+        ),
+      }));
+    } catch (error: any) {
+      console.error('❌ Error updating matrix status:', error);
+      set({ error: error.message });
+    }
+  },
+
+  startSession: async (machineId, operatorId) => {
+    try {
+      // Call backend API to start session
+      const session = await productionService.startSession(machineId);
+
+      // Update local state
+      set((state) => ({
+        activeSessions: [...state.activeSessions, session],
+        machines: state.machines.map((m) =>
+          m.id === machineId
+            ? {
+                ...m,
+                status: MachineStatus.NORMAL_RUNNING,
+                currentOperatorId: operatorId,
+                sessionStartedAt: new Date(),
+              }
+            : m
+        ),
+      }));
+
+      // Update matrices to RUNNING
       set((state) => ({
         matrices: state.matrices.map((mat) =>
           mat.machineId === machineId
             ? {
                 ...mat,
-                status: newMatrixStatus,
+                status: MatrixStatus.RUNNING,
                 lastStatusChangeAt: new Date(),
-                currentStopReasonId: status === MachineStatus.EMERGENCY ? mat.currentStopReasonId : undefined,
               }
             : mat
         ),
       }));
+    } catch (error: any) {
+      console.error('❌ Error starting session:', error);
+      set({ error: error.message });
     }
-  },
-
-  updateMatrixStatus: (matrixId, status, stopReasonId) => {
-    set((state) => ({
-      matrices: state.matrices.map((mat) =>
-        mat.id === matrixId
-          ? {
-              ...mat,
-              status,
-              currentStopReasonId: status === MatrixStatus.STOPPED ? stopReasonId : undefined,
-              lastStatusChangeAt: new Date(),
-            }
-          : mat
-      ),
-    }));
-  },
-
-  startSession: (machineId, operatorId) => {
-    const newSession: ProductionSession = {
-      id: `session-${Date.now()}`,
-      companyId: '1',
-      machineId,
-      operatorId,
-      startedAt: new Date(),
-      active: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    set((state) => ({
-      activeSessions: [...state.activeSessions, newSession],
-    }));
-
-    get().updateMachineStatus(machineId, MachineStatus.NORMAL_RUNNING, operatorId);
   },
 
   endSession: (sessionId) => {

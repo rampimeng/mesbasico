@@ -6,10 +6,11 @@ import { MachineStatus } from '@/types';
 import MachineCard from '@/components/Operator/MachineCard';
 import EmergencyModal from '@/components/Operator/EmergencyModal';
 import { AlertTriangle, LogOut, Play, RefreshCw } from 'lucide-react';
+import { productionService } from '@/services/productionService';
 
 const OperatorDashboard = () => {
   const { user, company, logout } = useAuthStore();
-  const { machines, getMachinesByOperator, updateMachineStatus, isMachineInUse } = useMachineStore();
+  const { machines, loadMyMachines, getMachinesByOperator, updateMachineStatus, startSession, isMachineInUse } = useMachineStore();
   const { addCycleLog, getTodayCycles } = useAuditStore();
 
   const [operatorMachines, setOperatorMachines] = useState(getMachinesByOperator(user?.id || ''));
@@ -17,12 +18,20 @@ const OperatorDashboard = () => {
   const [blockedMessage, setBlockedMessage] = useState('');
   const [todayCycles, setTodayCycles] = useState(getTodayCycles(company?.id || '', user?.id));
 
+  // Load machines on mount
+  useEffect(() => {
+    console.log('🔄 OperatorDashboard mounted, loading machines...');
+    loadMyMachines();
+  }, [loadMyMachines]);
+
   useEffect(() => {
     setOperatorMachines(getMachinesByOperator(user?.id || ''));
     setTodayCycles(getTodayCycles(company?.id || '', user?.id));
   }, [machines, user, company, getMachinesByOperator, getTodayCycles]);
 
-  const handleStartShift = () => {
+  const handleStartShift = async () => {
+    if (!user) return;
+
     // Verificar se alguma máquina já está em uso por outro operador
     const machineInUse = operatorMachines.find((m) => {
       const inUse = isMachineInUse(m.id);
@@ -37,45 +46,44 @@ const OperatorDashboard = () => {
     }
 
     // Iniciar todas as máquinas
-    operatorMachines.forEach((machine) => {
+    for (const machine of operatorMachines) {
       if (machine.status === MachineStatus.IDLE) {
-        updateMachineStatus(machine.id, MachineStatus.NORMAL_RUNNING, user?.id);
+        await startSession(machine.id, user.id);
       }
-    });
+    }
   };
 
   const handleEmergencyStop = () => {
     setShowEmergencyModal(true);
   };
 
-  const handleEmergencyConfirm = (_reasonId: string) => {
+  const handleEmergencyConfirm = async (reasonId: string) => {
+    if (!user) return;
+
     // Parar todas as máquinas em emergência
-    operatorMachines.forEach((machine) => {
+    for (const machine of operatorMachines) {
       if (machine.status !== MachineStatus.IDLE) {
-        updateMachineStatus(machine.id, MachineStatus.EMERGENCY, user?.id);
+        await updateMachineStatus(machine.id, MachineStatus.EMERGENCY, user.id, reasonId);
       }
-    });
+    }
     setShowEmergencyModal(false);
   };
 
-  const handleAddCycle = () => {
-    // Registrar giro no log de auditoria
-    // Assumindo que o operador está adicionando um giro para a primeira máquina ativa
+  const handleAddCycle = async () => {
+    // Registrar giro no backend
     const activeMachine = operatorMachines.find(m => m.status === MachineStatus.NORMAL_RUNNING);
 
     if (activeMachine && user && company) {
-      addCycleLog({
-        companyId: company.id,
-        sessionId: activeMachine.sessionStartedAt?.toISOString() || 'session-' + Date.now(),
-        machineId: activeMachine.id,
-        operatorId: user.id,
-        cycleCompletedAt: new Date(),
-        machineName: activeMachine.name,
-        operatorName: user.name,
-      });
+      try {
+        await productionService.recordCycle(activeMachine.id);
 
-      // Atualizar contador local
-      setTodayCycles(getTodayCycles(company.id, user.id));
+        // Atualizar contador local
+        setTodayCycles(prev => prev + 1);
+
+        console.log('✅ Cycle recorded successfully');
+      } catch (error) {
+        console.error('❌ Error recording cycle:', error);
+      }
     }
   };
 

@@ -87,7 +87,7 @@ const SupervisorDashboard = () => {
               {user?.role === 'ADMIN' && (
                 <>
                   <Route path="/settings" element={<RegistrationPage />} />
-                  <Route path="/pdca" element={<PDCAPage />} />
+                  {company?.pdcaEnabled && <Route path="/pdca" element={<PDCAPage />} />}
                   <Route path="/audit" element={<AuditPage />} />
                 </>
               )}

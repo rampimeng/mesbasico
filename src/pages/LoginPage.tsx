@@ -91,7 +91,6 @@ const LoginPage = () => {
                 <Shield className="w-8 h-8 text-white" />
               </div>
             )}
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">MES SaaS</h1>
             <p className="text-gray-600">Manufacturing Execution System</p>
           </div>
 
@@ -165,21 +164,11 @@ const LoginPage = () => {
             </button>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm font-semibold text-gray-700 mb-2">Credenciais de Demonstração:</p>
-            <div className="text-xs text-gray-600 space-y-1">
-              <div><strong>Master:</strong> master@mes.com / master123 (MFA: 123456)</div>
-              <div><strong>Admin:</strong> admin@empresa.com / admin123</div>
-              <div><strong>Supervisor:</strong> supervisor@empresa.com / super123</div>
-              <div><strong>Operador:</strong> operador@empresa.com / oper123</div>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}
         <p className="text-center text-gray-600 mt-6 text-sm">
-          © 2024 MES SaaS. Todos os direitos reservados.
+          © 2025 RENGEMES. Todos os direitos reservados.
         </p>
       </div>
     </div>

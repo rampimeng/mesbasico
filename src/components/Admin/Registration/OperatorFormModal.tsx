@@ -11,7 +11,6 @@ interface OperatorFormModalProps {
 
 const OperatorFormModal = ({ operator, onClose }: OperatorFormModalProps) => {
   const company = useAuthStore((state) => state.company);
-  const groups = useRegistrationStore((state) => state.getGroups(company?.id || ''));
   const addOperator = useRegistrationStore((state) => state.addOperator);
   const updateOperator = useRegistrationStore((state) => state.updateOperator);
 
@@ -21,7 +20,6 @@ const OperatorFormModal = ({ operator, onClose }: OperatorFormModalProps) => {
     phone: operator?.phone || '',
     password: operator?.password || '',
     active: operator?.active ?? true,
-    groupIds: operator?.groupIds || [],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -34,7 +32,6 @@ const OperatorFormModal = ({ operator, onClose }: OperatorFormModalProps) => {
         phone: operator.phone || '',
         password: operator.password,
         active: operator.active,
-        groupIds: operator.groupIds || [],
       });
     }
   }, [operator]);
@@ -56,10 +53,6 @@ const OperatorFormModal = ({ operator, onClose }: OperatorFormModalProps) => {
       newErrors.password = 'Senha é obrigatória';
     } else if (formData.password && formData.password.length < 6) {
       newErrors.password = 'Senha deve ter no mínimo 6 caracteres';
-    }
-
-    if (formData.groupIds.length === 0) {
-      newErrors.groupIds = 'Selecione pelo menos uma célula';
     }
 
     setErrors(newErrors);
@@ -88,15 +81,6 @@ const OperatorFormModal = ({ operator, onClose }: OperatorFormModalProps) => {
     }
 
     onClose();
-  };
-
-  const handleGroupToggle = (groupId: string) => {
-    setFormData((prev) => {
-      const groupIds = prev.groupIds.includes(groupId)
-        ? prev.groupIds.filter((id) => id !== groupId)
-        : [...prev.groupIds, groupId];
-      return { ...prev, groupIds };
-    });
   };
 
   const formatPhone = (value: string) => {
@@ -191,31 +175,11 @@ const OperatorFormModal = ({ operator, onClose }: OperatorFormModalProps) => {
             {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
           </div>
 
-          {/* Células */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Células *
-            </label>
-            <div className="space-y-2 border border-gray-300 rounded-lg p-4">
-              {groups.length === 0 ? (
-                <p className="text-sm text-gray-500">
-                  Nenhuma célula cadastrada. Cadastre células primeiro.
-                </p>
-              ) : (
-                groups.map((group) => (
-                  <label key={group.id} className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.groupIds.includes(group.id)}
-                      onChange={() => handleGroupToggle(group.id)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">{group.name}</span>
-                  </label>
-                ))
-              )}
-            </div>
-            {errors.groupIds && <p className="mt-1 text-sm text-red-600">{errors.groupIds}</p>}
+          {/* Nota sobre Células */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-800">
+              <strong>Nota:</strong> Para vincular este operador a células, vá para a aba "Células" e edite a célula desejada para adicionar o operador.
+            </p>
           </div>
 
           {/* Status Ativo */}

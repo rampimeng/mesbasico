@@ -26,6 +26,8 @@ const MachineFormModal = ({ machine, onClose }: MachineFormModalProps) => {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (machine) {
@@ -50,24 +52,37 @@ const MachineFormModal = ({ machine, onClose }: MachineFormModalProps) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm() || !company) return;
 
-    const data = {
-      ...formData,
-      groupId: formData.groupId || undefined,
-    };
+    setIsSubmitting(true);
+    setApiError('');
 
-    if (machine) {
-      updateMachine(machine.id, data);
-    } else {
-      addMachine({
-        ...data,
-        companyId: company.id,
-      });
+    try {
+      const data = {
+        ...formData,
+        groupId: formData.groupId || undefined,
+      };
+
+      console.log('🔍 Submitting machine data:', data);
+
+      if (machine) {
+        await updateMachine(machine.id, data);
+      } else {
+        await addMachine({
+          ...data,
+          companyId: company.id,
+        });
+      }
+      console.log('✅ Machine saved successfully');
+      onClose();
+    } catch (error: any) {
+      console.error('❌ Error saving machine:', error);
+      setApiError(error.message || 'Erro ao salvar máquina');
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose();
   };
 
   const handleOperatorToggle = (opId: string) => {
@@ -90,6 +105,12 @@ const MachineFormModal = ({ machine, onClose }: MachineFormModalProps) => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {apiError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {apiError}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Nome *</label>
@@ -160,12 +181,14 @@ const MachineFormModal = ({ machine, onClose }: MachineFormModalProps) => {
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <button type="button" onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              disabled={isSubmitting}>
               Cancelar
             </button>
             <button type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              {machine ? 'Salvar' : 'Cadastrar'}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting}>
+              {isSubmitting ? 'Salvando...' : (machine ? 'Salvar' : 'Cadastrar')}
             </button>
           </div>
         </form>

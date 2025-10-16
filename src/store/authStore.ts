@@ -1,88 +1,29 @@
 import { create } from 'zustand';
-import { User, Company, LoginCredentials, UserRole } from '@/types';
+import { User, Company, LoginCredentials } from '@/types';
+import authService from '@/services/auth.service';
 
 interface AuthStore {
   user: User | null;
   company: Company | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  error: string | null;
   appLogoUrl: string; // URL do logotipo do aplicativo (global)
   setUser: (user: User | null) => void;
   setCompany: (company: Company | null) => void;
   setAppLogoUrl: (url: string) => void;
   login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => void;
-  checkAuth: () => void;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+  clearError: () => void;
 }
-
-// Mock data para demonstração
-const mockCompanies: Company[] = [
-  {
-    id: '1',
-    name: 'Empresa Demo LTDA',
-    cnpj: '12.345.678/0001-90',
-    active: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
-
-const mockUsers: User[] = [
-  {
-    id: '1',
-    companyId: '1',
-    name: 'Master User',
-    email: 'master@mes.com',
-    password: 'master123',
-    role: UserRole.MASTER,
-    active: true,
-    mfaEnabled: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '2',
-    companyId: '1',
-    name: 'Admin User',
-    email: 'admin@empresa.com',
-    password: 'admin123',
-    role: UserRole.ADMIN,
-    active: true,
-    mfaEnabled: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '3',
-    companyId: '1',
-    name: 'Supervisor User',
-    email: 'supervisor@empresa.com',
-    password: 'super123',
-    role: UserRole.SUPERVISOR,
-    active: true,
-    mfaEnabled: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '4',
-    companyId: '1',
-    name: 'Operador João',
-    email: 'operador@empresa.com',
-    password: 'oper123',
-    role: UserRole.OPERATOR,
-    active: true,
-    mfaEnabled: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
 
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   company: null,
   isAuthenticated: false,
   isLoading: false,
+  error: null,
   appLogoUrl: '', // Será carregado do localStorage
 
   setUser: (user) => set({ user, isAuthenticated: !!user }),
@@ -94,84 +35,189 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ appLogoUrl: url });
   },
 
+  clearError: () => set({ error: null }),
+
   login: async (credentials) => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
 
     try {
-      // Simular requisição de API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await authService.login({
+        email: credentials.email,
+        password: credentials.password,
+        mfaCode: credentials.mfaCode,
+      });
 
-      const user = mockUsers.find(
-        (u) => u.email === credentials.email && u.password === credentials.password
-      );
+      // Converter os dados da API para o formato do store
+      const user: User = {
+        id: response.user.id,
+        name: response.user.name,
+        email: response.user.email,
+        role: response.user.role,
+        companyId: response.user.companyId,
+        active: true,
+        mfaEnabled: false,
+        password: '', // Não armazenar senha no frontend
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      if (!user) {
-        throw new Error('Credenciais inválidas');
-      }
-
-      if (!user.active) {
-        throw new Error('Usuário inativo');
-      }
-
-      // Verificar MFA se necessário
-      if (user.mfaEnabled && user.role === UserRole.MASTER) {
-        if (!credentials.mfaCode || credentials.mfaCode !== '123456') {
-          throw new Error('Código MFA inválido');
-        }
-      }
-
-      const company = mockCompanies.find((c) => c.id === user.companyId);
-
-      // Salvar no localStorage
-      localStorage.setItem('user', JSON.stringify(user));
-      if (company) {
-        localStorage.setItem('company', JSON.stringify(company));
+      let company: Company | null = null;
+      if (response.company) {
+        company = {
+          id: response.company.id,
+          name: response.company.name,
+          cnpj: '', // Não vem na resposta de login
+          active: true,
+          logoUrl: response.company.logoUrl,
+          dashboardToken: response.company.dashboardToken,
+          email: '',
+          contactName: '',
+          contactPhone: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
       }
 
       set({
         user,
-        company: company || null,
+        company,
         isAuthenticated: true,
         isLoading: false,
+        error: null,
       });
-    } catch (error) {
-      set({ isLoading: false });
+    } catch (error: any) {
+      set({
+        isLoading: false,
+        error: error.message || 'Erro ao fazer login',
+        user: null,
+        company: null,
+        isAuthenticated: false,
+      });
       throw error;
     }
   },
 
-  logout: () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('company');
-    set({
-      user: null,
-      company: null,
-      isAuthenticated: false,
-    });
+  logout: async () => {
+    set({ isLoading: true });
+
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    } finally {
+      set({
+        user: null,
+        company: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+    }
   },
 
-  checkAuth: () => {
-    const userStr = localStorage.getItem('user');
-    const companyStr = localStorage.getItem('company');
+  checkAuth: async () => {
     const appLogoUrl = localStorage.getItem('appLogoUrl') || '';
 
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        const company = companyStr ? JSON.parse(companyStr) : null;
+    if (!authService.isAuthenticated()) {
+      set({
+        user: null,
+        company: null,
+        isAuthenticated: false,
+        appLogoUrl,
+      });
+      return;
+    }
+
+    set({ isLoading: true });
+
+    try {
+      // Tentar obter dados atualizados do usuário
+      const userData = await authService.getCurrentUser();
+
+      const user: User = {
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        companyId: userData.companyId,
+        active: userData.active ?? true,
+        mfaEnabled: userData.mfaEnabled ?? false,
+        password: '',
+        createdAt: userData.createdAt ? new Date(userData.createdAt) : new Date(),
+        updatedAt: userData.updatedAt ? new Date(userData.updatedAt) : new Date(),
+      };
+
+      // Carregar empresa do localStorage
+      const storedCompany = authService.getStoredCompany();
+      let company: Company | null = null;
+
+      if (storedCompany) {
+        company = {
+          id: storedCompany.id,
+          name: storedCompany.name,
+          cnpj: '',
+          active: true,
+          logoUrl: storedCompany.logoUrl,
+          dashboardToken: storedCompany.dashboardToken,
+          email: '',
+          contactName: '',
+          contactPhone: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+      }
+
+      set({
+        user,
+        company,
+        isAuthenticated: true,
+        isLoading: false,
+        appLogoUrl,
+      });
+    } catch (error) {
+      console.error('Erro ao verificar autenticação:', error);
+
+      // Se falhar, tentar usar dados do localStorage
+      const storedUser = authService.getStoredUser();
+      const storedCompany = authService.getStoredCompany();
+
+      if (storedUser) {
+        let company: Company | null = null;
+
+        if (storedCompany) {
+          company = {
+            id: storedCompany.id,
+            name: storedCompany.name,
+            cnpj: '',
+            active: true,
+            logoUrl: storedCompany.logoUrl,
+            dashboardToken: storedCompany.dashboardToken,
+            email: '',
+            contactName: '',
+            contactPhone: '',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+        }
+
         set({
-          user,
+          user: storedUser,
           company,
           isAuthenticated: true,
+          isLoading: false,
           appLogoUrl,
         });
-      } catch {
-        localStorage.removeItem('user');
-        localStorage.removeItem('company');
+      } else {
+        // Sem dados válidos, fazer logout
+        await authService.logout();
+        set({
+          user: null,
+          company: null,
+          isAuthenticated: false,
+          isLoading: false,
+          appLogoUrl,
+        });
       }
-    } else {
-      // Carregar logo do app mesmo sem usuário logado (para tela de login)
-      set({ appLogoUrl });
     }
   },
 }));
