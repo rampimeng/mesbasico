@@ -10,12 +10,13 @@ import {
   deleteCompany,
 } from '../controllers/companies.controller';
 import { authenticate, authorize } from '../middleware/auth';
+import { UserRole } from '../types';
 
 const router = Router();
 
 // All routes require authentication and MASTER role
 router.use(authenticate);
-router.use(authorize('MASTER'));
+router.use(authorize(UserRole.MASTER));
 
 // Master-only routes
 router.get('/', getAllCompanies);

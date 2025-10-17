@@ -7,6 +7,7 @@ import {
   deleteStopReason,
 } from '../controllers/stop-reasons.controller';
 import { authenticate, authorize } from '../middleware/auth';
+import { UserRole } from '../types';
 
 const router = Router();
 
@@ -14,12 +15,12 @@ const router = Router();
 router.use(authenticate);
 
 // Admin and Supervisor can view
-router.get('/', authorize('ADMIN', 'SUPERVISOR'), getAllStopReasons);
-router.get('/:id', authorize('ADMIN', 'SUPERVISOR'), getStopReasonById);
+router.get('/', authorize(UserRole.ADMIN, UserRole.SUPERVISOR), getAllStopReasons);
+router.get('/:id', authorize(UserRole.ADMIN, UserRole.SUPERVISOR), getStopReasonById);
 
 // Only Admin can create, update, delete
-router.post('/', authorize('ADMIN'), createStopReason);
-router.put('/:id', authorize('ADMIN'), updateStopReason);
-router.delete('/:id', authorize('ADMIN'), deleteStopReason);
+router.post('/', authorize(UserRole.ADMIN), createStopReason);
+router.put('/:id', authorize(UserRole.ADMIN), updateStopReason);
+router.delete('/:id', authorize(UserRole.ADMIN), deleteStopReason);
 
 export default router;

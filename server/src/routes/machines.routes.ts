@@ -8,6 +8,7 @@ import {
   deleteMachine,
 } from '../controllers/machines.controller';
 import { authenticate, authorize } from '../middleware/auth';
+import { UserRole } from '../types';
 
 const router = Router();
 
@@ -15,15 +16,15 @@ const router = Router();
 router.use(authenticate);
 
 // Operator can view their own machines
-router.get('/operator/my-machines', authorize('OPERATOR'), getOperatorMachines);
+router.get('/operator/my-machines', authorize(UserRole.OPERATOR), getOperatorMachines);
 
 // Admin and Supervisor can view all
-router.get('/', authorize('ADMIN', 'SUPERVISOR'), getAllMachines);
-router.get('/:id', authorize('ADMIN', 'SUPERVISOR'), getMachineById);
+router.get('/', authorize(UserRole.ADMIN, UserRole.SUPERVISOR), getAllMachines);
+router.get('/:id', authorize(UserRole.ADMIN, UserRole.SUPERVISOR), getMachineById);
 
 // Only Admin can create, update, delete
-router.post('/', authorize('ADMIN'), createMachine);
-router.put('/:id', authorize('ADMIN'), updateMachine);
-router.delete('/:id', authorize('ADMIN'), deleteMachine);
+router.post('/', authorize(UserRole.ADMIN), createMachine);
+router.put('/:id', authorize(UserRole.ADMIN), updateMachine);
+router.delete('/:id', authorize(UserRole.ADMIN), deleteMachine);
 
 export default router;
