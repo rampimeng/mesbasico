@@ -1,3 +1,19 @@
+// User Roles
+export enum UserRole {
+  MASTER = 'MASTER',
+  ADMIN = 'ADMIN',
+  SUPERVISOR = 'SUPERVISOR',
+  OPERATOR = 'OPERATOR',
+}
+
+// JWT Payload
+export interface JWTPayload {
+  id: string;
+  email: string;
+  role: UserRole;
+  companyId?: string;
+}
+
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;

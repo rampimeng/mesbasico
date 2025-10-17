@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
 import { sendUnauthorized } from '../utils/response';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../types';
 
 export const authenticate = (req: Request, res: Response, next: NextFunction) => {
   try {

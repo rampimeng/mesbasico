@@ -1,23 +1,16 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config/env';
-import { UserRole } from '@prisma/client';
+import { JWTPayload } from '../types';
 
-export interface JwtPayload {
-  id: string;
-  email: string;
-  role: UserRole;
-  companyId?: string;
-}
-
-export const generateToken = (payload: JwtPayload): string => {
+export const generateToken = (payload: JWTPayload): string => {
   return jwt.sign(payload, config.jwtSecret, {
     expiresIn: config.jwtExpiresIn,
   });
 };
 
-export const verifyToken = (token: string): JwtPayload => {
+export const verifyToken = (token: string): JWTPayload => {
   try {
-    return jwt.verify(token, config.jwtSecret) as JwtPayload;
+    return jwt.verify(token, config.jwtSecret) as JWTPayload;
   } catch (error) {
     throw new Error('Invalid or expired token');
   }

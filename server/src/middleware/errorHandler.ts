@@ -1,26 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
-import { Prisma } from '@prisma/client';
 
 export const errorHandler = (
-  error: Error,
+  error: Error & { code?: string },
   _req: Request,
   res: Response,
   _next: NextFunction
 ) => {
   console.error('Error:', error);
 
-  // Prisma errors
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+  // Database errors (Supabase/PostgreSQL)
+  if (error.code) {
     switch (error.code) {
-      case 'P2002':
+      case '23505': // Unique violation
         return res.status(400).json({
           success: false,
           error: 'A record with this value already exists',
         });
-      case 'P2025':
-        return res.status(404).json({
+      case '23503': // Foreign key violation
+        return res.status(400).json({
           success: false,
-          error: 'Record not found',
+          error: 'Related record not found',
         });
       default:
         return res.status(400).json({
