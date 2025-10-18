@@ -7,6 +7,8 @@ export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const { companyId } = req.user!;
 
+    console.log('📋 Fetching users for company:', companyId);
+
     const { data: users, error } = await supabase
       .from('users')
       .select('id, companyId, name, email, role, active, mfaEnabled, phone, createdAt, updatedAt')
@@ -14,35 +16,57 @@ export const getAllUsers = async (req: Request, res: Response) => {
       .order('createdAt', { ascending: false });
 
     if (error) {
+      console.error('❌ Error fetching users:', error);
       return res.status(500).json({
         success: false,
         error: error.message,
       });
     }
 
+    console.log(`✅ Found ${users?.length || 0} users`);
+
     // For each user, get their groupIds from operator_groups
     const usersWithGroups = await Promise.all(
       (users || []).map(async (user) => {
         if (user.role === 'OPERATOR') {
-          const { data: operatorGroups } = await supabase
-            .from('operator_groups')
-            .select('groupId')
-            .eq('userId', user.id);
+          try {
+            const { data: operatorGroups, error: groupError } = await supabase
+              .from('operator_groups')
+              .select('groupId')
+              .eq('userId', user.id);
 
-          return {
-            ...user,
-            groupIds: operatorGroups?.map((og) => og.groupId) || [],
-          };
+            if (groupError) {
+              console.error(`❌ Error fetching groups for user ${user.id}:`, groupError);
+              return {
+                ...user,
+                groupIds: [],
+              };
+            }
+
+            return {
+              ...user,
+              groupIds: operatorGroups?.map((og) => og.groupId) || [],
+            };
+          } catch (err) {
+            console.error(`❌ Exception fetching groups for user ${user.id}:`, err);
+            return {
+              ...user,
+              groupIds: [],
+            };
+          }
         }
         return user;
       })
     );
+
+    console.log('✅ Returning users with groups');
 
     res.json({
       success: true,
       data: usersWithGroups,
     });
   } catch (error: any) {
+    console.error('❌ Exception in getAllUsers:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch users',
