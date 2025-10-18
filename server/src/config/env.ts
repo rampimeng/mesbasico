@@ -5,16 +5,22 @@ dotenv.config();
 export const config = {
   port: parseInt(process.env.PORT || '3001', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
-  databaseUrl: process.env.DATABASE_URL || '',
+  supabaseUrl: process.env.SUPABASE_URL || '',
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   jwtSecret: process.env.JWT_SECRET || 'default_secret_change_in_production',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   websocketPort: parseInt(process.env.WEBSOCKET_PORT || '3002', 10),
 };
 
-// Validar variáveis críticas
-if (!config.databaseUrl) {
-  console.error('ERROR: DATABASE_URL is not defined in .env file');
+// Validar variáveis críticas do Supabase
+if (!config.supabaseUrl) {
+  console.error('ERROR: SUPABASE_URL is not defined in environment variables');
+  process.exit(1);
+}
+
+if (!config.supabaseServiceRoleKey) {
+  console.error('ERROR: SUPABASE_SERVICE_ROLE_KEY is not defined in environment variables');
   process.exit(1);
 }
 
