@@ -53,7 +53,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
         name: response.user.name,
         email: response.user.email,
         role: response.user.role,
-        companyId: response.user.companyId,
+        companyId: response.user.companyId || '',
         active: true,
         mfaEnabled: false,
         password: '', // Não armazenar senha no frontend
@@ -70,9 +70,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
           active: true,
           logoUrl: response.company.logoUrl,
           dashboardToken: response.company.dashboardToken,
-          email: '',
-          contactName: '',
-          contactPhone: '',
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -159,9 +156,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
           active: true,
           logoUrl: storedCompany.logoUrl,
           dashboardToken: storedCompany.dashboardToken,
-          email: '',
-          contactName: '',
-          contactPhone: '',
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -192,9 +186,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
             active: true,
             logoUrl: storedCompany.logoUrl,
             dashboardToken: storedCompany.dashboardToken,
-            email: '',
-            contactName: '',
-            contactPhone: '',
             createdAt: new Date(),
             updatedAt: new Date(),
           };

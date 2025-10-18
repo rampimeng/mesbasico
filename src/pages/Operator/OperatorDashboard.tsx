@@ -11,7 +11,7 @@ import { productionService } from '@/services/productionService';
 const OperatorDashboard = () => {
   const { user, company, logout } = useAuthStore();
   const { machines, loadMyMachines, getMachinesByOperator, updateMachineStatus, startSession, isMachineInUse } = useMachineStore();
-  const { addCycleLog, getTodayCycles } = useAuditStore();
+  const { getTodayCycles } = useAuditStore();
 
   const [operatorMachines, setOperatorMachines] = useState(getMachinesByOperator(user?.id || ''));
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);

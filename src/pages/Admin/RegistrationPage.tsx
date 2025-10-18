@@ -18,7 +18,7 @@ const RegistrationPage = () => {
     // Carregar dados reais da API
     const companyId = user?.companyId;
     if (companyId) {
-      loadAll(companyId);
+      loadAll();
     }
   }, [loadAll, user?.companyId]);
 

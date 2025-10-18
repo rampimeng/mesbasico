@@ -12,11 +12,11 @@ interface RegistrationStore {
   error: string | null;
 
   // Load data from API
-  loadGroups: (companyId: string) => Promise<void>;
-  loadMachines: (companyId: string) => Promise<void>;
-  loadStopReasons: (companyId: string) => Promise<void>;
-  loadOperators: (companyId: string) => Promise<void>;
-  loadAll: (companyId: string) => Promise<void>;
+  loadGroups: () => Promise<void>;
+  loadMachines: () => Promise<void>;
+  loadStopReasons: () => Promise<void>;
+  loadOperators: () => Promise<void>;
+  loadAll: () => Promise<void>;
 
   // Grupos/Células
   getGroups: (companyId: string) => Group[];
@@ -52,7 +52,7 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
   error: null,
 
   // Load functions
-  loadGroups: async (companyId) => {
+  loadGroups: async () => {
     try {
       set({ loading: true, error: null });
       const groups = await groupsService.getAll();
@@ -62,7 +62,7 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
     }
   },
 
-  loadMachines: async (companyId) => {
+  loadMachines: async () => {
     try {
       set({ loading: true, error: null });
       const machines = await machinesService.getAll();
@@ -72,7 +72,7 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
     }
   },
 
-  loadStopReasons: async (companyId) => {
+  loadStopReasons: async () => {
     try {
       set({ loading: true, error: null });
       const stopReasons = await stopReasonsService.getAll();
@@ -82,7 +82,7 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
     }
   },
 
-  loadOperators: async (companyId) => {
+  loadOperators: async () => {
     try {
       set({ loading: true, error: null });
       const allUsers = await usersService.getAll();
@@ -93,12 +93,12 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
     }
   },
 
-  loadAll: async (companyId) => {
+  loadAll: async () => {
     await Promise.all([
-      get().loadGroups(companyId),
-      get().loadMachines(companyId),
-      get().loadStopReasons(companyId),
-      get().loadOperators(companyId),
+      get().loadGroups(),
+      get().loadMachines(),
+      get().loadStopReasons(),
+      get().loadOperators(),
     ]);
   },
 
