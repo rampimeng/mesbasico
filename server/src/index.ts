@@ -2,7 +2,7 @@ import app from './app';
 import { config } from './config/env';
 import supabase from './config/supabase';
 
-const startServer = async () => {
+const startServer = () => {
   console.log('🔧 Starting server...');
   console.log(`📝 Environment: ${config.nodeEnv}`);
   console.log(`🌐 Port: ${config.port}`);
@@ -42,20 +42,26 @@ const startServer = async () => {
       process.exit(1);
     }
   });
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('⚠️  SIGTERM signal received: closing HTTP server gracefully...');
+    server.close(() => {
+      console.log('✅ HTTP server closed');
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', () => {
+    console.log('⚠️  SIGINT signal received: closing HTTP server gracefully...');
+    server.close(() => {
+      console.log('✅ HTTP server closed');
+      process.exit(0);
+    });
+  });
 };
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('⚠️  SIGTERM signal received: closing HTTP server');
-  console.log('⚠️  This usually means the container orchestrator is stopping the app');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  console.log('⚠️  SIGINT signal received: closing HTTP server');
-  process.exit(0);
-});
-
+// Error handlers
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
   process.exit(1);
@@ -66,4 +72,5 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
+// Start the server
 startServer();
