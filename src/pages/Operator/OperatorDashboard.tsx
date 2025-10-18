@@ -10,10 +10,9 @@ import { productionService } from '@/services/productionService';
 
 const OperatorDashboard = () => {
   const { user, company, logout } = useAuthStore();
-  const { machines, loadMyMachines, getMachinesByOperator, updateMachineStatus, startSession, isMachineInUse } = useMachineStore();
+  const { machines, loadMyMachines, updateMachineStatus, startSession, isMachineInUse } = useMachineStore();
   const { getTodayCycles } = useAuditStore();
 
-  const [operatorMachines, setOperatorMachines] = useState(getMachinesByOperator(user?.id || ''));
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [blockedMessage, setBlockedMessage] = useState('');
   const [todayCycles, setTodayCycles] = useState(getTodayCycles(company?.id || '', user?.id));
@@ -25,15 +24,14 @@ const OperatorDashboard = () => {
   }, [loadMyMachines]);
 
   useEffect(() => {
-    setOperatorMachines(getMachinesByOperator(user?.id || ''));
     setTodayCycles(getTodayCycles(company?.id || '', user?.id));
-  }, [machines, user, company, getMachinesByOperator, getTodayCycles]);
+  }, [machines, user, company, getTodayCycles]);
 
   const handleStartShift = async () => {
     if (!user) return;
 
     // Verificar se alguma máquina já está em uso por outro operador
-    const machineInUse = operatorMachines.find((m) => {
+    const machineInUse = machines.find((m) => {
       const inUse = isMachineInUse(m.id);
       return inUse && m.currentOperatorId !== user?.id;
     });
@@ -46,7 +44,7 @@ const OperatorDashboard = () => {
     }
 
     // Iniciar todas as máquinas
-    for (const machine of operatorMachines) {
+    for (const machine of machines) {
       if (machine.status === MachineStatus.IDLE) {
         await startSession(machine.id, user.id);
       }
@@ -61,7 +59,7 @@ const OperatorDashboard = () => {
     if (!user) return;
 
     // Parar todas as máquinas em emergência
-    for (const machine of operatorMachines) {
+    for (const machine of machines) {
       if (machine.status !== MachineStatus.IDLE) {
         await updateMachineStatus(machine.id, MachineStatus.EMERGENCY, user.id, reasonId);
       }
@@ -71,7 +69,7 @@ const OperatorDashboard = () => {
 
   const handleAddCycle = async () => {
     // Registrar giro no backend
-    const activeMachine = operatorMachines.find(m => m.status === MachineStatus.NORMAL_RUNNING);
+    const activeMachine = machines.find(m => m.status === MachineStatus.NORMAL_RUNNING);
 
     if (activeMachine && user && company) {
       try {
@@ -87,10 +85,10 @@ const OperatorDashboard = () => {
     }
   };
 
-  const allMachinesRunning = operatorMachines.every(
+  const allMachinesRunning = machines.every(
     (m) => m.status === MachineStatus.NORMAL_RUNNING
   );
-  const anyMachineActive = operatorMachines.some(
+  const anyMachineActive = machines.some(
     (m) => m.status !== MachineStatus.IDLE
   );
 
@@ -192,12 +190,12 @@ const OperatorDashboard = () => {
 
         {/* Machines Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {operatorMachines.map((machine) => (
+          {machines.map((machine) => (
             <MachineCard key={machine.id} machine={machine} />
           ))}
         </div>
 
-        {operatorMachines.length === 0 && (
+        {machines.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">
               Nenhuma máquina vinculada ao seu usuário.

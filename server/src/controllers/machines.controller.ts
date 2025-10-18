@@ -130,9 +130,9 @@ export const getMachineById = async (req: Request, res: Response) => {
 export const createMachine = async (req: Request, res: Response) => {
   try {
     const { companyId } = req.user!;
-    const { name, code, groupId, numberOfMatrices, standardCycleTime, operatorIds } = req.body;
+    const { name, code, groupId, numberOfMatrices, standardCycleTime } = req.body;
 
-    console.log('📝 Creating machine:', { companyId, name, code, groupId, numberOfMatrices, standardCycleTime, operatorIds });
+    console.log('📝 Creating machine:', { companyId, name, code, groupId, numberOfMatrices, standardCycleTime });
 
     if (!name || !code) {
       console.log('❌ Validation failed: missing name or code');
@@ -149,7 +149,6 @@ export const createMachine = async (req: Request, res: Response) => {
       groupId: groupId || null,
       numberOfMatrices: numberOfMatrices || 0,
       standardCycleTime: standardCycleTime || 0,
-      operatorIds: operatorIds || [],
       status: 'IDLE',
     };
 
@@ -190,7 +189,7 @@ export const updateMachine = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { companyId } = req.user!;
-    const { name, code, groupId, numberOfMatrices, standardCycleTime, operatorIds, status } = req.body;
+    const { name, code, groupId, numberOfMatrices, standardCycleTime, status } = req.body;
 
     const updateData: any = {
       updatedAt: new Date().toISOString(),
@@ -201,7 +200,6 @@ export const updateMachine = async (req: Request, res: Response) => {
     if (groupId !== undefined) updateData.groupId = groupId;
     if (numberOfMatrices !== undefined) updateData.numberOfMatrices = numberOfMatrices;
     if (standardCycleTime !== undefined) updateData.standardCycleTime = standardCycleTime;
-    if (operatorIds !== undefined) updateData.operatorIds = operatorIds;
     if (status !== undefined) updateData.status = status;
 
     const { data: machine, error } = await supabase

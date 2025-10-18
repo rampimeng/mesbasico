@@ -16,7 +16,6 @@ interface MachineStore {
   updateMatrixStatus: (matrixId: string, status: MatrixStatus, stopReasonId?: string) => Promise<void>;
   startSession: (machineId: string, operatorId: string) => Promise<void>;
   endSession: (sessionId: string) => void;
-  getMachinesByOperator: (operatorId: string) => Machine[];
   getMatricesByMachine: (machineId: string) => Matrix[];
   isMachineInUse: (machineId: string) => boolean;
 }
@@ -191,10 +190,6 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
           : session
       ),
     }));
-  },
-
-  getMachinesByOperator: (operatorId) => {
-    return get().machines.filter((m) => m.operatorIds.includes(operatorId));
   },
 
   getMatricesByMachine: (machineId) => {

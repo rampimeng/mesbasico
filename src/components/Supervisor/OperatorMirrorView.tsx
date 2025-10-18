@@ -1,6 +1,9 @@
 import { X, Monitor, Edit } from 'lucide-react';
 import { useMachineStore } from '@/store/machineStore';
+import { useRegistrationStore } from '@/store/registrationStore';
+import { useAuthStore } from '@/store/authStore';
 import MachineCard from '@/components/Operator/MachineCard';
+import { Machine } from '@/types';
 
 interface OperatorMirrorViewProps {
   operatorId: string;
@@ -17,8 +20,18 @@ const OperatorMirrorView = ({
   onClose,
   interactive = false,
 }: OperatorMirrorViewProps) => {
-  const { getMachinesByOperator } = useMachineStore();
-  const operatorMachines = getMachinesByOperator(operatorId);
+  const company = useAuthStore((state) => state.company);
+  const { machines: allMachines } = useMachineStore();
+  const users = useRegistrationStore((state) => state.getOperators(company?.id || ''));
+
+  // Get operator's groupIds
+  const operator = users.find((u) => u.id === operatorId);
+  const operatorGroupIds = operator?.groupIds || [];
+
+  // Filter machines that belong to operator's groups
+  const operatorMachines: Machine[] = allMachines.filter((m) =>
+    m.groupId && operatorGroupIds.includes(m.groupId)
+  );
 
   return (
     <div className="space-y-6">

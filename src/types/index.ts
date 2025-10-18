@@ -66,7 +66,6 @@ export interface Machine {
   groupId?: string;
   numberOfMatrices: number; // Quantidade de matrizes
   standardCycleTime: number; // Tempo de ciclo padrão em segundos
-  operatorIds: string[]; // Operadores vinculados
   status: MachineStatus;
   currentOperatorId?: string; // Operador que está usando a máquina
   sessionStartedAt?: Date;

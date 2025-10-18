@@ -21,9 +21,11 @@ const MachinesList = () => {
     return groups.find((g) => g.id === groupId)?.name || 'N/A';
   };
 
-  const getOperatorNames = (operatorIds: string[]) => {
-    if (operatorIds.length === 0) return 'Nenhum';
-    return operatorIds
+  const getOperatorNamesForMachine = (groupId?: string) => {
+    if (!groupId) return 'Nenhum (máquina sem célula)';
+    const group = groups.find((g) => g.id === groupId);
+    if (!group || !group.operatorIds || group.operatorIds.length === 0) return 'Nenhum';
+    return group.operatorIds
       .map((id) => operators.find((op) => op.id === id)?.name)
       .filter(Boolean)
       .join(', ');
@@ -77,8 +79,8 @@ const MachinesList = () => {
                       <span className="font-medium text-gray-700">{machine.standardCycleTime}s</span>
                     </div>
                     <div className="col-span-2">
-                      <span className="text-gray-500">Operadores: </span>
-                      <span className="font-medium text-gray-700">{getOperatorNames(machine.operatorIds)}</span>
+                      <span className="text-gray-500">Operadores (via célula): </span>
+                      <span className="font-medium text-gray-700">{getOperatorNamesForMachine(machine.groupId)}</span>
                     </div>
                   </div>
                 </div>
