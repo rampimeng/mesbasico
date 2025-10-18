@@ -9,7 +9,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, companyId, name, email, role, active, mfaEnabled, createdAt, updatedAt')
+      .select('id, companyId, name, email, role, active, mfaEnabled, phone, createdAt, updatedAt')
       .eq('companyId', companyId)
       .order('createdAt', { ascending: false });
 
@@ -20,9 +20,27 @@ export const getAllUsers = async (req: Request, res: Response) => {
       });
     }
 
+    // For each user, get their groupIds from operator_groups
+    const usersWithGroups = await Promise.all(
+      (users || []).map(async (user) => {
+        if (user.role === 'OPERATOR') {
+          const { data: operatorGroups } = await supabase
+            .from('operator_groups')
+            .select('groupId')
+            .eq('userId', user.id);
+
+          return {
+            ...user,
+            groupIds: operatorGroups?.map((og) => og.groupId) || [],
+          };
+        }
+        return user;
+      })
+    );
+
     res.json({
       success: true,
-      data: users,
+      data: usersWithGroups,
     });
   } catch (error: any) {
     res.status(500).json({
