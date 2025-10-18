@@ -12,7 +12,6 @@ interface MachineFormModalProps {
 const MachineFormModal = ({ machine, onClose }: MachineFormModalProps) => {
   const company = useAuthStore((state) => state.company);
   const groups = useRegistrationStore((state) => state.getGroups(company?.id || ''));
-  const operators = useRegistrationStore((state) => state.getOperators(company?.id || ''));
   const addMachine = useRegistrationStore((state) => state.addMachine);
   const updateMachine = useRegistrationStore((state) => state.updateMachine);
 
@@ -22,7 +21,6 @@ const MachineFormModal = ({ machine, onClose }: MachineFormModalProps) => {
     groupId: machine?.groupId || '',
     numberOfMatrices: machine?.numberOfMatrices || 0,
     standardCycleTime: machine?.standardCycleTime || 60,
-    operatorIds: machine?.operatorIds || [],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -37,7 +35,6 @@ const MachineFormModal = ({ machine, onClose }: MachineFormModalProps) => {
         groupId: machine.groupId || '',
         numberOfMatrices: machine.numberOfMatrices,
         standardCycleTime: machine.standardCycleTime,
-        operatorIds: machine.operatorIds,
       });
     }
   }, [machine]);
@@ -83,15 +80,6 @@ const MachineFormModal = ({ machine, onClose }: MachineFormModalProps) => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleOperatorToggle = (opId: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      operatorIds: prev.operatorIds.includes(opId)
-        ? prev.operatorIds.filter((id) => id !== opId)
-        : [...prev.operatorIds, opId],
-    }));
   };
 
   return (
@@ -161,22 +149,10 @@ const MachineFormModal = ({ machine, onClose }: MachineFormModalProps) => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Operadores Vinculados</label>
-            <div className="space-y-2 border border-gray-300 rounded-lg p-4">
-              {operators.length === 0 ? (
-                <p className="text-sm text-gray-500">Nenhum operador cadastrado</p>
-              ) : (
-                operators.map((op) => (
-                  <label key={op.id} className="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" checked={formData.operatorIds.includes(op.id)}
-                      onChange={() => handleOperatorToggle(op.id)}
-                      className="w-4 h-4 text-blue-600 rounded" />
-                    <span className="text-sm">{op.name}</span>
-                  </label>
-                ))
-              )}
-            </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-800">
+              <strong>💡 Dica:</strong> Os operadores terão acesso a esta máquina quando forem vinculados à célula <strong>{formData.groupId ? groups.find(g => g.id === formData.groupId)?.name : 'selecionada'}</strong>.
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
