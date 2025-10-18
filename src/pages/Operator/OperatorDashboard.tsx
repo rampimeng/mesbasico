@@ -28,7 +28,14 @@ const OperatorDashboard = () => {
   }, [machines, user, company, getTodayCycles]);
 
   const handleStartShift = async () => {
-    if (!user) return;
+    if (!user) {
+      console.warn('⚠️ No user found');
+      return;
+    }
+
+    console.log('🎬 Starting shift for operator:', user.name);
+    console.log('📋 Machines available:', machines);
+    console.log('📋 Machine statuses:', machines.map(m => ({ id: m.id, name: m.name, status: m.status })));
 
     // Verificar se alguma máquina já está em uso por outro operador
     const machineInUse = machines.find((m) => {
@@ -37,6 +44,7 @@ const OperatorDashboard = () => {
     });
 
     if (machineInUse) {
+      console.warn('⚠️ Machine in use:', machineInUse);
       setBlockedMessage(
         'O grupo de máquina que você está alocado já está em produção, procure o supervisor.'
       );
@@ -44,11 +52,17 @@ const OperatorDashboard = () => {
     }
 
     // Iniciar todas as máquinas
+    console.log('🚀 Starting all machines...');
     for (const machine of machines) {
+      console.log(`🔍 Checking machine ${machine.name}, status: ${machine.status}`);
       if (machine.status === MachineStatus.IDLE) {
+        console.log(`✅ Starting machine ${machine.name}`);
         await startSession(machine.id, user.id);
+      } else {
+        console.log(`⏭️ Skipping machine ${machine.name}, not IDLE`);
       }
     }
+    console.log('✅ Shift started!');
   };
 
   const handleEmergencyStop = () => {
