@@ -11,7 +11,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, companyId, name, email, role, active, mfaEnabled, phone, createdAt, updatedAt')
+      .select('id, companyId, name, email, role, active, mfaEnabled, createdAt, updatedAt')
       .eq('companyId', companyId)
       .order('createdAt', { ascending: false });
 
@@ -110,7 +110,7 @@ export const getUserById = async (req: Request, res: Response) => {
 export const createUser = async (req: Request, res: Response) => {
   try {
     const { companyId } = req.user!;
-    const { name, email, password, role, phone, groupIds } = req.body;
+    const { name, email, password, role, groupIds } = req.body;
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({
@@ -171,7 +171,7 @@ export const updateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { companyId } = req.user!;
-    const { name, email, role, active, phone, groupIds } = req.body;
+    const { name, email, role, active, groupIds } = req.body;
 
     const updateData: any = {
       updatedAt: new Date().toISOString(),
