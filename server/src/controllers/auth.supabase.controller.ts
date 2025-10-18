@@ -5,16 +5,6 @@ import { generateToken } from '../utils/jwt';
 import { sendSuccess, sendError, sendUnauthorized } from '../utils/response';
 import { LoginRequest, LoginResponse } from '../types';
 
-// Type definition for authenticated request
-interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-    companyId?: string;
-  };
-}
-
 export class AuthSupabaseController {
   async login(req: Request, res: Response) {
     try {
@@ -114,7 +104,7 @@ export class AuthSupabaseController {
     }
   }
 
-  async logout(req: AuthRequest, res: Response) {
+  async logout(req: Request, res: Response) {
     try {
       if (!req.user) {
         return sendUnauthorized(res);
@@ -138,7 +128,7 @@ export class AuthSupabaseController {
     }
   }
 
-  async me(req: AuthRequest, res: Response) {
+  async me(req: Request, res: Response) {
     try {
       if (!req.user) {
         return sendUnauthorized(res);

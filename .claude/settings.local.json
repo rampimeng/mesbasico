@@ -21,7 +21,8 @@
       "Bash(tasklist:*)",
       "Bash(powershell -Command \"Stop-Process -Id 5420,34592 -Force\")",
       "Bash(npx ts-node:*)",
-      "Bash(npm run verify-master-password:*)"
+      "Bash(npm run verify-master-password:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

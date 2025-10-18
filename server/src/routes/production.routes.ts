@@ -8,6 +8,7 @@ import {
 } from '../controllers/production.controller';
 import { authenticate } from '../middleware/auth';
 import { checkRole } from '../middleware/checkRole';
+import { UserRole } from '../types';
 
 const router = Router();
 
@@ -15,14 +16,14 @@ const router = Router();
 router.use(authenticate);
 
 // Production session management
-router.post('/sessions/start', checkRole(['OPERATOR']), startSession);
-router.post('/sessions/end', checkRole(['OPERATOR']), endSession);
+router.post('/sessions/start', checkRole([UserRole.OPERATOR]), startSession);
+router.post('/sessions/end', checkRole([UserRole.OPERATOR]), endSession);
 
 // Status updates
-router.post('/machines/status', checkRole(['OPERATOR']), updateMachineStatus);
-router.post('/matrices/status', checkRole(['OPERATOR']), updateMatrixStatus);
+router.post('/machines/status', checkRole([UserRole.OPERATOR]), updateMachineStatus);
+router.post('/matrices/status', checkRole([UserRole.OPERATOR]), updateMatrixStatus);
 
 // Cycle recording
-router.post('/cycles', checkRole(['OPERATOR']), recordCycle);
+router.post('/cycles', checkRole([UserRole.OPERATOR]), recordCycle);
 
 export default router;
