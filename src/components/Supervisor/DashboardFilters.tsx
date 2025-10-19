@@ -66,7 +66,7 @@ const DashboardFilters = ({ filters, onChange }: DashboardFiltersProps) => {
         <label className="label">Grupo/Célula</label>
         <select
           className="input"
-          value={filters.groupIds.join(',')}
+          value={(filters.groupIds || []).join(',')}
           onChange={(e) =>
             onChange({
               ...filters,
@@ -88,7 +88,7 @@ const DashboardFilters = ({ filters, onChange }: DashboardFiltersProps) => {
         <label className="label">Máquina</label>
         <select
           className="input"
-          value={filters.machineIds.join(',')}
+          value={(filters.machineIds || []).join(',')}
           onChange={(e) =>
             onChange({
               ...filters,
@@ -110,7 +110,7 @@ const DashboardFilters = ({ filters, onChange }: DashboardFiltersProps) => {
         <label className="label">Operador</label>
         <select
           className="input"
-          value={filters.operatorIds.join(',')}
+          value={(filters.operatorIds || []).join(',')}
           onChange={(e) =>
             onChange({
               ...filters,
