@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { UserRole } from '@/types';
 import { Lock, Mail, Shield } from 'lucide-react';
+
+const REMEMBER_ME_KEY = 'rememberMe';
+const SAVED_EMAIL_KEY = 'savedEmail';
+const SAVED_PASSWORD_KEY = 'savedPassword';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -13,6 +17,22 @@ const LoginPage = () => {
   const [mfaCode, setMfaCode] = useState('');
   const [showMfa, setShowMfa] = useState(false);
   const [error, setError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Load saved credentials on mount
+  useEffect(() => {
+    const savedRememberMe = localStorage.getItem(REMEMBER_ME_KEY) === 'true';
+    if (savedRememberMe) {
+      const savedEmail = localStorage.getItem(SAVED_EMAIL_KEY);
+      const savedPassword = localStorage.getItem(SAVED_PASSWORD_KEY);
+
+      if (savedEmail && savedPassword) {
+        setEmail(savedEmail);
+        setPassword(savedPassword);
+        setRememberMe(true);
+      }
+    }
+  }, []);
 
   // Se já está autenticado, redirecionar
   if (isAuthenticated && user) {
@@ -38,6 +58,18 @@ const LoginPage = () => {
 
     try {
       await login({ email, password, mfaCode: showMfa ? mfaCode : undefined });
+
+      // Save credentials if remember me is checked
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_ME_KEY, 'true');
+        localStorage.setItem(SAVED_EMAIL_KEY, email);
+        localStorage.setItem(SAVED_PASSWORD_KEY, password);
+      } else {
+        // Clear saved credentials if not checked
+        localStorage.removeItem(REMEMBER_ME_KEY);
+        localStorage.removeItem(SAVED_EMAIL_KEY);
+        localStorage.removeItem(SAVED_PASSWORD_KEY);
+      }
 
       // Navegar para a página apropriada
       const currentUser = useAuthStore.getState().user;
@@ -154,6 +186,19 @@ const LoginPage = () => {
                 {error}
               </div>
             )}
+
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+              />
+              <label htmlFor="remember-me" className="ml-2 text-sm text-gray-700 cursor-pointer">
+                Lembre meus dados
+              </label>
+            </div>
 
             <button
               type="submit"
