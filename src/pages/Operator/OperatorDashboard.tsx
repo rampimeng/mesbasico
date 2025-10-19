@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useMachineStore } from '@/store/machineStore';
 import { useAuditStore } from '@/store/auditStore';
+import { useRegistrationStore } from '@/store/registrationStore';
 import { MachineStatus } from '@/types';
 import MachineCard from '@/components/Operator/MachineCard';
 import EmergencyModal from '@/components/Operator/EmergencyModal';
@@ -12,16 +13,18 @@ const OperatorDashboard = () => {
   const { user, company, logout } = useAuthStore();
   const { machines, loadMyMachines, updateMachineStatus, startSession, isMachineInUse } = useMachineStore();
   const { getTodayCycles } = useAuditStore();
+  const { loadStopReasons } = useRegistrationStore();
 
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [blockedMessage, setBlockedMessage] = useState('');
   const [todayCycles, setTodayCycles] = useState(getTodayCycles(company?.id || '', user?.id));
 
-  // Load machines on mount
+  // Load machines and stop reasons on mount
   useEffect(() => {
-    console.log('🔄 OperatorDashboard mounted, loading machines...');
+    console.log('🔄 OperatorDashboard mounted, loading data...');
     loadMyMachines();
-  }, [loadMyMachines]);
+    loadStopReasons();
+  }, [loadMyMachines, loadStopReasons]);
 
   useEffect(() => {
     setTodayCycles(getTodayCycles(company?.id || '', user?.id));

@@ -57,7 +57,7 @@ export const analyticsService = {
     });
     const data = await response.json();
     console.log('📦 Pareto response:', { ok: response.ok, status: response.status, data });
-    if (!response.ok) throw new Error(data.error || 'Failed to fetch Pareto data');
+    if (!response.ok) throw new Error(data.error || data.message || 'Failed to fetch Pareto data');
     return data.data;
   },
 
@@ -75,7 +75,7 @@ export const analyticsService = {
     });
     const data = await response.json();
     console.log('📦 Time metrics response:', { ok: response.ok, status: response.status, data });
-    if (!response.ok) throw new Error(data.error || 'Failed to fetch time metrics');
+    if (!response.ok) throw new Error(data.error || data.message || 'Failed to fetch time metrics');
     return data.data;
   },
 
@@ -93,7 +93,7 @@ export const analyticsService = {
     });
     const data = await response.json();
     console.log('📦 Cycle metrics response:', { ok: response.ok, status: response.status, data });
-    if (!response.ok) throw new Error(data.error || 'Failed to fetch cycle metrics');
+    if (!response.ok) throw new Error(data.error || data.message || 'Failed to fetch cycle metrics');
     return data.data;
   },
 };
