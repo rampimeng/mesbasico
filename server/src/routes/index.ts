@@ -6,6 +6,7 @@ import machinesRoutes from './machines.routes';
 import stopReasonsRoutes from './stop-reasons.routes';
 import usersRoutes from './users.routes';
 import productionRoutes from './production.routes';
+import analyticsRoutes from './analytics.routes';
 import supabase from '../config/supabase';
 
 const router = Router();
@@ -55,5 +56,6 @@ router.use('/machines', machinesRoutes);
 router.use('/stop-reasons', stopReasonsRoutes);
 router.use('/users', usersRoutes);
 router.use('/production', productionRoutes);
+router.use('/analytics', analyticsRoutes);
 
 export default router;
