@@ -350,6 +350,68 @@ export const recordCycle = async (req: Request, res: Response) => {
   }
 };
 
+// Get today's first shift start time for the operator
+export const getTodayShiftStart = async (req: Request, res: Response) => {
+  try {
+    const { companyId, id: userId } = req.user!;
+
+    // Get today's date range in São Paulo timezone
+    const now = new Date();
+    const saoPauloOffset = -3 * 60; // UTC-3 in minutes
+    const localOffset = now.getTimezoneOffset();
+    const saoPauloTime = new Date(now.getTime() + (localOffset + saoPauloOffset) * 60000);
+
+    // Start of today in São Paulo
+    const startOfDay = new Date(saoPauloTime);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    // End of today in São Paulo
+    const endOfDay = new Date(saoPauloTime);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    console.log('🕐 Fetching today shift start:', {
+      userId,
+      startOfDay: startOfDay.toISOString(),
+      endOfDay: endOfDay.toISOString()
+    });
+
+    // Get first session of the day
+    const { data: sessions, error } = await supabase
+      .from('production_sessions')
+      .select('startedAt')
+      .eq('companyId', companyId)
+      .eq('operatorId', userId)
+      .gte('startedAt', startOfDay.toISOString())
+      .lte('startedAt', endOfDay.toISOString())
+      .order('startedAt', { ascending: true })
+      .limit(1);
+
+    if (error) {
+      console.error('❌ Error fetching shift start:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    const firstSession = sessions?.[0];
+
+    res.json({
+      success: true,
+      data: {
+        shiftStartTime: firstSession?.startedAt || null,
+        currentTime: now.toISOString(),
+      },
+    });
+  } catch (error: any) {
+    console.error('❌ Exception in getTodayShiftStart:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch shift start time',
+    });
+  }
+};
+
 // End production session
 export const endSession = async (req: Request, res: Response) => {
   try {

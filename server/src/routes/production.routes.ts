@@ -5,6 +5,7 @@ import {
   updateMachineStatus,
   updateMatrixStatus,
   recordCycle,
+  getTodayShiftStart,
 } from '../controllers/production.controller';
 import { authenticate } from '../middleware/auth';
 import { checkRole } from '../middleware/checkRole';
@@ -18,6 +19,7 @@ router.use(authenticate);
 // Production session management
 router.post('/sessions/start', checkRole([UserRole.OPERATOR]), startSession);
 router.post('/sessions/end', checkRole([UserRole.OPERATOR]), endSession);
+router.get('/sessions/today-shift-start', checkRole([UserRole.OPERATOR]), getTodayShiftStart);
 
 // Status updates
 router.post('/machines/status', checkRole([UserRole.OPERATOR]), updateMachineStatus);

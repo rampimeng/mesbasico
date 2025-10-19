@@ -84,4 +84,15 @@ export const productionService = {
     if (!response.ok) throw new Error(data.error || 'Failed to record cycle');
     return data.data;
   },
+
+  // Get today's shift start time
+  async getTodayShiftStart() {
+    const response = await fetch(`${API_URL}/production/sessions/today-shift-start`, {
+      method: 'GET',
+      headers: getAuthHeader(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to fetch shift start time');
+    return data.data;
+  },
 };

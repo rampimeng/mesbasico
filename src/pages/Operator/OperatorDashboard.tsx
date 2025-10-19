@@ -6,7 +6,7 @@ import { useRegistrationStore } from '@/store/registrationStore';
 import { MachineStatus } from '@/types';
 import MachineCard from '@/components/Operator/MachineCard';
 import EmergencyModal from '@/components/Operator/EmergencyModal';
-import { AlertTriangle, LogOut, Play, RefreshCw } from 'lucide-react';
+import { AlertTriangle, LogOut, Play, RefreshCw, Clock } from 'lucide-react';
 import { productionService } from '@/services/productionService';
 
 const OperatorDashboard = () => {
@@ -19,16 +19,70 @@ const OperatorDashboard = () => {
   const [blockedMessage, setBlockedMessage] = useState('');
   const [todayCycles, setTodayCycles] = useState(getTodayCycles(company?.id || '', user?.id));
 
+  // Shift timer states
+  const [shiftStartTime, setShiftStartTime] = useState<Date | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [shiftDuration, setShiftDuration] = useState('00:00:00');
+
   // Load machines and stop reasons on mount
   useEffect(() => {
     console.log('🔄 OperatorDashboard mounted, loading data...');
     loadMyMachines();
     loadStopReasons();
+    loadShiftStartTime();
   }, [loadMyMachines, loadStopReasons]);
 
   useEffect(() => {
     setTodayCycles(getTodayCycles(company?.id || '', user?.id));
   }, [machines, user, company, getTodayCycles]);
+
+  // Load shift start time
+  const loadShiftStartTime = async () => {
+    try {
+      const data = await productionService.getTodayShiftStart();
+      if (data.shiftStartTime) {
+        setShiftStartTime(new Date(data.shiftStartTime));
+      }
+    } catch (error) {
+      console.error('❌ Error loading shift start time:', error);
+    }
+  };
+
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Calculate shift duration
+  useEffect(() => {
+    if (shiftStartTime) {
+      const now = currentTime.getTime();
+      const start = shiftStartTime.getTime();
+      const diff = Math.max(0, now - start);
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setShiftDuration(
+        `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+      );
+    }
+  }, [shiftStartTime, currentTime]);
+
+  // Format current time for São Paulo timezone
+  const formatCurrentTime = () => {
+    return currentTime.toLocaleTimeString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  };
 
   const handleStartShift = async () => {
     try {
@@ -98,6 +152,9 @@ const OperatorDashboard = () => {
       if (errorCount > 0) {
         alert(`${errorCount} máquina(s) falharam ao iniciar. Verifique o console.`);
       }
+
+      // Reload shift start time
+      await loadShiftStartTime();
     } catch (error: any) {
       console.error('❌ Error in handleStartShift:', error);
       alert(`Erro ao iniciar turno: ${error.message}`);
@@ -174,6 +231,34 @@ const OperatorDashboard = () => {
                 </p>
               </div>
             </div>
+
+            {/* Timer and Clock Section */}
+            <div className="flex items-center gap-4">
+              {/* Shift Timer */}
+              {shiftStartTime && (
+                <div className="bg-blue-50 px-4 py-2 rounded-lg border-2 border-blue-300">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="text-xs text-blue-600 font-semibold">Tempo de Turno</p>
+                      <p className="text-xl font-bold text-blue-700 tabular-nums">{shiftDuration}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Current Time */}
+              <div className="bg-green-50 px-4 py-2 rounded-lg border-2 border-green-300">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="text-xs text-green-600 font-semibold">Hora Atual</p>
+                    <p className="text-xl font-bold text-green-700 tabular-nums">{formatCurrentTime()}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center gap-3">
               <button
                 onClick={() => window.location.reload()}
