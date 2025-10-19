@@ -335,12 +335,18 @@ const OperatorDashboard = () => {
   const handleEmergencyConfirm = async (reasonId: string) => {
     if (!user) return;
 
-    // Parar todas as máquinas em emergência
+    console.log('🚨 Emergency stop confirmed with reason:', reasonId);
+
+    // Parar todas as máquinas com status STOPPED (não EMERGENCY)
+    // Isso garante que o motivo seja registrado e as máquinas mostrem "Reiniciar"
     for (const machine of machines) {
       if (machine.status !== MachineStatus.IDLE) {
-        await updateMachineStatus(machine.id, MachineStatus.EMERGENCY, user.id, reasonId);
+        console.log(`🛑 Stopping machine ${machine.name} (ID: ${machine.id}) with reason ${reasonId}`);
+        await updateMachineStatus(machine.id, MachineStatus.STOPPED, user.id, reasonId);
       }
     }
+
+    showNotification('Emergência registrada! Todas as máquinas foram paradas.', 'warning');
     setShowEmergencyModal(false);
   };
 

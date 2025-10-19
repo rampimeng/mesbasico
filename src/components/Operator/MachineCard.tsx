@@ -147,7 +147,7 @@ const MachineCard = ({ machine }: MachineCardProps) => {
               className="btn-success w-full btn-lg flex items-center justify-center gap-2"
             >
               <Play className="w-6 h-6" />
-              Iniciar Máquina
+              {machine.status === MachineStatus.STOPPED ? 'Reiniciar' : 'Iniciar Máquina'}
             </button>
           ) : (
             <button
