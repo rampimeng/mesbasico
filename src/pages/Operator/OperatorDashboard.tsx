@@ -6,7 +6,7 @@ import { useRegistrationStore } from '@/store/registrationStore';
 import { MachineStatus } from '@/types';
 import MachineCard from '@/components/Operator/MachineCard';
 import EmergencyModal from '@/components/Operator/EmergencyModal';
-import { AlertTriangle, LogOut, Play, RefreshCw, Clock } from 'lucide-react';
+import { AlertTriangle, LogOut, Play, RefreshCw, Clock, Maximize, Minimize } from 'lucide-react';
 import { productionService } from '@/services/productionService';
 
 const OperatorDashboard = () => {
@@ -24,17 +24,162 @@ const OperatorDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [shiftDuration, setShiftDuration] = useState('00:00:00');
 
+  // Wake Lock state
+  const [wakeLock, setWakeLock] = useState<any>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   // Load machines and stop reasons on mount
   useEffect(() => {
     console.log('🔄 OperatorDashboard mounted, loading data...');
     loadMyMachines();
     loadStopReasons();
     loadShiftStartTime();
+
+    // Enable fullscreen on mount
+    enableFullscreen();
+
+    // Prevent device sleep
+    requestWakeLock();
+
+    // Cleanup on unmount
+    return () => {
+      releaseWakeLock();
+    };
   }, [loadMyMachines, loadStopReasons]);
 
   useEffect(() => {
     setTodayCycles(getTodayCycles(company?.id || '', user?.id));
   }, [machines, user, company, getTodayCycles]);
+
+  // Fullscreen functions
+  const enableFullscreen = async () => {
+    try {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+        setIsFullscreen(true);
+        console.log('✅ Fullscreen enabled');
+      } else if ((elem as any).webkitRequestFullscreen) {
+        // Safari
+        await (elem as any).webkitRequestFullscreen();
+        setIsFullscreen(true);
+        console.log('✅ Fullscreen enabled (webkit)');
+      } else if ((elem as any).mozRequestFullScreen) {
+        // Firefox
+        await (elem as any).mozRequestFullScreen();
+        setIsFullscreen(true);
+        console.log('✅ Fullscreen enabled (moz)');
+      } else if ((elem as any).msRequestFullscreen) {
+        // IE/Edge
+        await (elem as any).msRequestFullscreen();
+        setIsFullscreen(true);
+        console.log('✅ Fullscreen enabled (ms)');
+      }
+    } catch (error) {
+      console.warn('⚠️ Fullscreen not supported or denied:', error);
+    }
+  };
+
+  const exitFullscreen = async () => {
+    try {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+        console.log('✅ Fullscreen disabled');
+      } else if ((document as any).webkitExitFullscreen) {
+        await (document as any).webkitExitFullscreen();
+        setIsFullscreen(false);
+      } else if ((document as any).mozCancelFullScreen) {
+        await (document as any).mozCancelFullScreen();
+        setIsFullscreen(false);
+      } else if ((document as any).msExitFullscreen) {
+        await (document as any).msExitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (error) {
+      console.warn('⚠️ Error exiting fullscreen:', error);
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (isFullscreen) {
+      exitFullscreen();
+    } else {
+      enableFullscreen();
+    }
+  };
+
+  // Monitor fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(isCurrentlyFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Wake Lock functions (prevent sleep)
+  const requestWakeLock = async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        const lock = await (navigator as any).wakeLock.request('screen');
+        setWakeLock(lock);
+        console.log('✅ Wake Lock enabled - device will not sleep');
+
+        // Re-request wake lock if it's released (e.g., when tab becomes inactive)
+        lock.addEventListener('release', () => {
+          console.log('⚠️ Wake Lock released');
+        });
+      } else {
+        console.warn('⚠️ Wake Lock API not supported on this device');
+      }
+    } catch (error) {
+      console.warn('⚠️ Wake Lock request failed:', error);
+    }
+  };
+
+  const releaseWakeLock = async () => {
+    if (wakeLock !== null) {
+      try {
+        await wakeLock.release();
+        setWakeLock(null);
+        console.log('✅ Wake Lock released');
+      } catch (error) {
+        console.error('❌ Error releasing wake lock:', error);
+      }
+    }
+  };
+
+  // Re-request wake lock when page becomes visible again
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && wakeLock === null) {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [wakeLock]);
 
   // Load shift start time
   const loadShiftStartTime = async () => {
@@ -260,6 +405,20 @@ const OperatorDashboard = () => {
             </div>
 
             <div className="flex items-center gap-3">
+              <button
+                onClick={toggleFullscreen}
+                className="btn-secondary flex items-center gap-2"
+                title={isFullscreen ? 'Sair do modo tela cheia' : 'Entrar em modo tela cheia'}
+              >
+                {isFullscreen ? (
+                  <Minimize className="w-5 h-5" />
+                ) : (
+                  <Maximize className="w-5 h-5" />
+                )}
+                <span className="hidden sm:inline">
+                  {isFullscreen ? 'Tela Normal' : 'Tela Cheia'}
+                </span>
+              </button>
               <button
                 onClick={() => window.location.reload()}
                 className="btn-secondary flex items-center gap-2"
