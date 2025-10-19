@@ -67,9 +67,9 @@ export const getStopReasonById = async (req: Request, res: Response) => {
 export const createStopReason = async (req: Request, res: Response) => {
   try {
     const { companyId } = req.user!;
-    const { name, description, category } = req.body;
+    const { name, description, category, ignoreInPareto } = req.body;
 
-    console.log('📝 Creating stop reason:', { companyId, name, description, category });
+    console.log('📝 Creating stop reason:', { companyId, name, description, category, ignoreInPareto });
 
     if (!name) {
       console.log('❌ Validation failed: missing name');
@@ -84,6 +84,7 @@ export const createStopReason = async (req: Request, res: Response) => {
       name,
       description: description || null,
       category: category || null,
+      ignoreInPareto: ignoreInPareto || false,
     };
 
     console.log('📦 Stop reason data to insert:', stopReasonData);
@@ -123,7 +124,7 @@ export const updateStopReason = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { companyId } = req.user!;
-    const { name, description, category } = req.body;
+    const { name, description, category, ignoreInPareto } = req.body;
 
     const updateData: any = {
       updatedAt: new Date().toISOString(),
@@ -132,6 +133,7 @@ export const updateStopReason = async (req: Request, res: Response) => {
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (category !== undefined) updateData.category = category;
+    if (ignoreInPareto !== undefined) updateData.ignoreInPareto = ignoreInPareto;
 
     const { data: stopReason, error } = await supabase
       .from('stop_reasons')

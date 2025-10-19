@@ -516,8 +516,8 @@ const OperatorDashboard = () => {
           </div>
         )}
 
-        {/* Machines Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        {/* Machines Grid - 6 máquinas por linha */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {machines.map((machine) => (
             <MachineCard key={machine.id} machine={machine} />
           ))}
