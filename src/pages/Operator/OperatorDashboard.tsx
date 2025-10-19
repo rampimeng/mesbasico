@@ -62,14 +62,18 @@ const OperatorDashboard = () => {
         return;
       }
 
-      // Iniciar todas as máquinas
+      // Iniciar todas as máquinas (IDLE ou STOPPED)
       console.log('🚀 Starting all machines...');
       let successCount = 0;
       let errorCount = 0;
 
       for (const machine of machines) {
         console.log(`🔍 Checking machine ${machine.name}, status: ${machine.status}`);
-        if (machine.status === MachineStatus.IDLE) {
+
+        // Pode iniciar máquinas IDLE ou STOPPED
+        const canStart = machine.status === MachineStatus.IDLE || machine.status === MachineStatus.STOPPED;
+
+        if (canStart) {
           console.log(`✅ Starting machine ${machine.name}`);
           try {
             await startSession(machine.id, user.id);
@@ -81,7 +85,7 @@ const OperatorDashboard = () => {
             alert(`Erro ao iniciar máquina ${machine.name}: ${error.message}`);
           }
         } else {
-          console.log(`⏭️ Skipping machine ${machine.name}, not IDLE (status: ${machine.status})`);
+          console.log(`⏭️ Skipping machine ${machine.name}, already running (status: ${machine.status})`);
         }
       }
 
@@ -134,11 +138,14 @@ const OperatorDashboard = () => {
     }
   };
 
+  // Todas as máquinas já estão rodando? Desabilita "Iniciar Turno"
   const allMachinesRunning = machines.every(
     (m) => m.status === MachineStatus.NORMAL_RUNNING
   );
+
+  // Alguma máquina está ativa (não IDLE e não STOPPED)? Habilita Emergência e Adicionar Giro
   const anyMachineActive = machines.some(
-    (m) => m.status !== MachineStatus.IDLE
+    (m) => m.status !== MachineStatus.IDLE && m.status !== MachineStatus.STOPPED
   );
 
   return (
