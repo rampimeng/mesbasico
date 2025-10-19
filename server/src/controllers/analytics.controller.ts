@@ -12,7 +12,7 @@ export const getParetoData = async (req: Request, res: Response) => {
     // Build query
     let query = supabase
       .from('time_logs')
-      .select('*, stop_reasons(name)')
+      .select('*, stop_reasons(name, ignoreInPareto)')
       .eq('companyId', companyId)
       .in('status', ['STOPPED', 'EMERGENCY'])
       .not('stopReasonId', 'is', null);
@@ -68,7 +68,14 @@ export const getParetoData = async (req: Request, res: Response) => {
     for (const log of timeLogs || []) {
       const reasonId = log.stopReasonId;
       const reasonName = log.stop_reasons?.name || log.stopReasonName || 'Desconhecido';
+      const ignoreInPareto = log.stop_reasons?.ignoreInPareto || false;
       const duration = log.durationSeconds || 0;
+
+      // Skip reasons that should be ignored in Pareto
+      if (ignoreInPareto) {
+        console.log(`⏭️ Skipping reason (ignoreInPareto=true):`, { reasonId, reasonName });
+        continue;
+      }
 
       if (duration > 0) {
         if (reasonMap.has(reasonId)) {

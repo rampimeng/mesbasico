@@ -18,6 +18,7 @@ const StopReasonFormModal = ({ reason, onClose }: StopReasonFormModalProps) => {
     name: reason?.name || '',
     description: reason?.description || '',
     category: reason?.category || '',
+    ignoreInPareto: reason?.ignoreInPareto || false,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -30,6 +31,7 @@ const StopReasonFormModal = ({ reason, onClose }: StopReasonFormModalProps) => {
         name: reason.name,
         description: reason.description || '',
         category: reason.category || '',
+        ignoreInPareto: reason.ignoreInPareto || false,
       });
     }
   }, [reason]);
@@ -107,6 +109,24 @@ const StopReasonFormModal = ({ reason, onClose }: StopReasonFormModalProps) => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg"
               placeholder="Descrição detalhada do motivo"
               rows={3} />
+          </div>
+
+          <div className="flex items-start gap-3">
+            <input
+              id="ignoreInPareto"
+              type="checkbox"
+              checked={formData.ignoreInPareto}
+              onChange={(e) => setFormData({ ...formData, ignoreInPareto: e.target.checked })}
+              className="mt-1 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+            />
+            <div>
+              <label htmlFor="ignoreInPareto" className="block text-sm font-medium text-gray-700 cursor-pointer">
+                Ignorar no Gráfico de Pareto
+              </label>
+              <p className="text-sm text-gray-500 mt-1">
+                Se marcado, este motivo será registrado mas não aparecerá no gráfico de Pareto de análise
+              </p>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">

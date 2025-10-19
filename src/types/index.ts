@@ -90,6 +90,7 @@ export interface StopReason {
   name: string;
   description?: string;
   category?: string;
+  ignoreInPareto?: boolean; // Se true, não aparece no gráfico de Pareto
   createdAt: Date;
   updatedAt: Date;
 }
