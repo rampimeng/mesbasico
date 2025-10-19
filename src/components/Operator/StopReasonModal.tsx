@@ -12,6 +12,8 @@ const StopReasonModal = ({ onClose, onConfirm }: StopReasonModalProps) => {
   const stopReasons = useRegistrationStore((state) => state.getStopReasons(company?.id || ''));
 
   const handleReasonClick = (reasonId: string) => {
+    console.log('✋ StopReasonModal: User clicked reason:', reasonId);
+    console.log('📋 Available stop reasons:', stopReasons);
     // Salva automaticamente ao clicar no motivo
     onConfirm(reasonId);
   };

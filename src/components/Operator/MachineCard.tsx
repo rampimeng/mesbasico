@@ -74,19 +74,25 @@ const MachineCard = ({ machine }: MachineCardProps) => {
     setShowStopModal(true);
   };
 
-  const handleStopConfirm = (_reasonId: string) => {
+  const handleStopConfirm = (reasonId: string) => {
+    console.log('🛑 handleStopConfirm called with reasonId:', reasonId);
+    console.log('🎯 stopTarget:', stopTarget);
+
     if (stopTarget === 'machine') {
       // Parar a máquina e todas as matrizes
-      updateMachineStatus(machine.id, MachineStatus.STOPPED, user?.id);
+      console.log('🚫 Stopping entire machine with reasonId:', reasonId);
+      updateMachineStatus(machine.id, MachineStatus.STOPPED, user?.id, reasonId);
       matrices.forEach((matrix) => {
-        updateMatrixStatus(matrix.id, MatrixStatus.STOPPED);
+        console.log('🚫 Stopping matrix', matrix.id, 'with reasonId:', reasonId);
+        updateMatrixStatus(matrix.id, MatrixStatus.STOPPED, reasonId);
       });
       setIsRunning(false);
     } else {
       // Parar matriz específica
       const matrixId = matrices[stopTarget as number]?.id;
+      console.log('🚫 Stopping matrix', matrixId, 'with reasonId:', reasonId);
       if (matrixId) {
-        updateMatrixStatus(matrixId, MatrixStatus.STOPPED);
+        updateMatrixStatus(matrixId, MatrixStatus.STOPPED, reasonId);
       }
     }
     setShowStopModal(false);
