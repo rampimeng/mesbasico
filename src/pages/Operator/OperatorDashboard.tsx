@@ -31,41 +31,73 @@ const OperatorDashboard = () => {
   }, [machines, user, company, getTodayCycles]);
 
   const handleStartShift = async () => {
-    if (!user) {
-      console.warn('⚠️ No user found');
-      return;
-    }
-
-    console.log('🎬 Starting shift for operator:', user.name);
-    console.log('📋 Machines available:', machines);
-    console.log('📋 Machine statuses:', machines.map(m => ({ id: m.id, name: m.name, status: m.status })));
-
-    // Verificar se alguma máquina já está em uso por outro operador
-    const machineInUse = machines.find((m) => {
-      const inUse = isMachineInUse(m.id);
-      return inUse && m.currentOperatorId !== user?.id;
-    });
-
-    if (machineInUse) {
-      console.warn('⚠️ Machine in use:', machineInUse);
-      setBlockedMessage(
-        'O grupo de máquina que você está alocado já está em produção, procure o supervisor.'
-      );
-      return;
-    }
-
-    // Iniciar todas as máquinas
-    console.log('🚀 Starting all machines...');
-    for (const machine of machines) {
-      console.log(`🔍 Checking machine ${machine.name}, status: ${machine.status}`);
-      if (machine.status === MachineStatus.IDLE) {
-        console.log(`✅ Starting machine ${machine.name}`);
-        await startSession(machine.id, user.id);
-      } else {
-        console.log(`⏭️ Skipping machine ${machine.name}, not IDLE`);
+    try {
+      if (!user) {
+        console.warn('⚠️ No user found');
+        alert('Erro: Usuário não encontrado. Faça login novamente.');
+        return;
       }
+
+      console.log('🎬 Starting shift for operator:', user.name);
+      console.log('📋 Machines available:', machines);
+      console.log('📋 Machine statuses:', machines.map(m => ({ id: m.id, name: m.name, status: m.status })));
+
+      if (machines.length === 0) {
+        console.warn('⚠️ No machines available');
+        alert('Erro: Nenhuma máquina disponível. Entre em contato com o administrador.');
+        return;
+      }
+
+      // Verificar se alguma máquina já está em uso por outro operador
+      const machineInUse = machines.find((m) => {
+        const inUse = isMachineInUse(m.id);
+        return inUse && m.currentOperatorId !== user?.id;
+      });
+
+      if (machineInUse) {
+        console.warn('⚠️ Machine in use:', machineInUse);
+        setBlockedMessage(
+          'O grupo de máquina que você está alocado já está em produção, procure o supervisor.'
+        );
+        return;
+      }
+
+      // Iniciar todas as máquinas
+      console.log('🚀 Starting all machines...');
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const machine of machines) {
+        console.log(`🔍 Checking machine ${machine.name}, status: ${machine.status}`);
+        if (machine.status === MachineStatus.IDLE) {
+          console.log(`✅ Starting machine ${machine.name}`);
+          try {
+            await startSession(machine.id, user.id);
+            successCount++;
+            console.log(`✅ Machine ${machine.name} started successfully`);
+          } catch (error: any) {
+            errorCount++;
+            console.error(`❌ Error starting machine ${machine.name}:`, error);
+            alert(`Erro ao iniciar máquina ${machine.name}: ${error.message}`);
+          }
+        } else {
+          console.log(`⏭️ Skipping machine ${machine.name}, not IDLE (status: ${machine.status})`);
+        }
+      }
+
+      console.log(`✅ Shift started! Success: ${successCount}, Errors: ${errorCount}`);
+
+      if (successCount > 0) {
+        alert(`${successCount} máquina(s) iniciada(s) com sucesso!`);
+      }
+
+      if (errorCount > 0) {
+        alert(`${errorCount} máquina(s) falharam ao iniciar. Verifique o console.`);
+      }
+    } catch (error: any) {
+      console.error('❌ Error in handleStartShift:', error);
+      alert(`Erro ao iniciar turno: ${error.message}`);
     }
-    console.log('✅ Shift started!');
   };
 
   const handleEmergencyStop = () => {
