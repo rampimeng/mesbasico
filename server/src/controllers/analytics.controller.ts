@@ -48,6 +48,20 @@ export const getParetoData = async (req: Request, res: Response) => {
       });
     }
 
+    console.log(`📋 Found ${timeLogs?.length || 0} time logs with STOPPED/EMERGENCY status`);
+
+    // Debug: show first few logs
+    if (timeLogs && timeLogs.length > 0) {
+      console.log('🔍 Sample logs:', timeLogs.slice(0, 3).map(log => ({
+        status: log.status,
+        stopReasonId: log.stopReasonId,
+        stopReasonName: log.stopReasonName,
+        durationSeconds: log.durationSeconds,
+        startedAt: log.startedAt,
+        endedAt: log.endedAt,
+      })));
+    }
+
     // Aggregate by stop reason
     const reasonMap = new Map<string, { reasonId: string; reasonName: string; duration: number }>();
 
@@ -56,15 +70,19 @@ export const getParetoData = async (req: Request, res: Response) => {
       const reasonName = log.stop_reasons?.name || log.stopReasonName || 'Desconhecido';
       const duration = log.durationSeconds || 0;
 
-      if (reasonMap.has(reasonId)) {
-        const existing = reasonMap.get(reasonId)!;
-        existing.duration += duration;
+      if (duration > 0) {
+        if (reasonMap.has(reasonId)) {
+          const existing = reasonMap.get(reasonId)!;
+          existing.duration += duration;
+        } else {
+          reasonMap.set(reasonId, {
+            reasonId,
+            reasonName,
+            duration,
+          });
+        }
       } else {
-        reasonMap.set(reasonId, {
-          reasonId,
-          reasonName,
-          duration,
-        });
+        console.log(`⚠️ Skipping log with 0 duration:`, { reasonId, reasonName, status: log.status });
       }
     }
 
