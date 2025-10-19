@@ -1,23 +1,16 @@
 import { X, AlertCircle } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { useRegistrationStore } from '@/store/registrationStore';
 
 interface StopReasonModalProps {
   onClose: () => void;
   onConfirm: (reasonId: string) => void;
 }
 
-// Mock data
-const mockStopReasons = [
-  { id: 'r1', name: 'Troca de Matriz', category: 'Setup' },
-  { id: 'r2', name: 'Manutenção Preventiva', category: 'Manutenção' },
-  { id: 'r3', name: 'Falta de Material', category: 'Logística' },
-  { id: 'r4', name: 'Quebra de Ferramenta', category: 'Manutenção' },
-  { id: 'r5', name: 'Ajuste de Qualidade', category: 'Qualidade' },
-  { id: 'r6', name: 'Pausa Programada', category: 'Operacional' },
-  { id: 'r7', name: 'Falha Elétrica', category: 'Manutenção' },
-  { id: 'r8', name: 'Outros', category: 'Diversos' },
-];
-
 const StopReasonModal = ({ onClose, onConfirm }: StopReasonModalProps) => {
+  const company = useAuthStore((state) => state.company);
+  const stopReasons = useRegistrationStore((state) => state.getStopReasons(company?.id || ''));
+
   const handleReasonClick = (reasonId: string) => {
     // Salva automaticamente ao clicar no motivo
     onConfirm(reasonId);
@@ -47,16 +40,24 @@ const StopReasonModal = ({ onClose, onConfirm }: StopReasonModalProps) => {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {mockStopReasons.map((reason) => (
-              <button
-                key={reason.id}
-                onClick={() => handleReasonClick(reason.id)}
-                className="p-4 rounded-lg border-2 text-left transition-all border-gray-200 hover:border-primary-500 hover:bg-primary-50 active:scale-95"
-              >
-                <p className="font-semibold text-gray-900">{reason.name}</p>
-                <p className="text-sm text-gray-600 mt-1">{reason.category}</p>
-              </button>
-            ))}
+            {stopReasons.length === 0 ? (
+              <p className="text-gray-500 text-center col-span-2 py-8">
+                Nenhum motivo de parada cadastrado. Entre em contato com o administrador.
+              </p>
+            ) : (
+              stopReasons.map((reason) => (
+                <button
+                  key={reason.id}
+                  onClick={() => handleReasonClick(reason.id)}
+                  className="p-4 rounded-lg border-2 text-left transition-all border-gray-200 hover:border-primary-500 hover:bg-primary-50 active:scale-95"
+                >
+                  <p className="font-semibold text-gray-900">{reason.name}</p>
+                  {reason.category && (
+                    <p className="text-sm text-gray-600 mt-1">{reason.category}</p>
+                  )}
+                </button>
+              ))
+            )}
           </div>
         </div>
       </div>

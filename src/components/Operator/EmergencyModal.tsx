@@ -1,38 +1,19 @@
 import { X, AlertTriangle } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { useRegistrationStore } from '@/store/registrationStore';
 
 interface EmergencyModalProps {
   onClose: () => void;
   onConfirm: (reasonId: string) => void;
 }
 
-// Mock data
-const emergencyReasons = [
-  { id: 'e1', name: 'Risco de Acidente', severity: 'critical' },
-  { id: 'e2', name: 'Falha Crítica de Equipamento', severity: 'critical' },
-  { id: 'e3', name: 'Problema de Segurança', severity: 'critical' },
-  { id: 'e4', name: 'Vazamento de Óleo/Fluido', severity: 'high' },
-  { id: 'e5', name: 'Superaquecimento', severity: 'high' },
-  { id: 'e6', name: 'Ruído Anormal', severity: 'medium' },
-  { id: 'e7', name: 'Outros', severity: 'medium' },
-];
-
 const EmergencyModal = ({ onClose, onConfirm }: EmergencyModalProps) => {
+  const company = useAuthStore((state) => state.company);
+  const stopReasons = useRegistrationStore((state) => state.getStopReasons(company?.id || ''));
+
   const handleReasonClick = (reasonId: string) => {
     // Salva automaticamente ao clicar no motivo
     onConfirm(reasonId);
-  };
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical':
-        return 'border-red-600 bg-red-50';
-      case 'high':
-        return 'border-orange-500 bg-orange-50';
-      case 'medium':
-        return 'border-yellow-500 bg-yellow-50';
-      default:
-        return 'border-gray-300 bg-gray-50';
-    }
   };
 
   return (
@@ -71,30 +52,29 @@ const EmergencyModal = ({ onClose, onConfirm }: EmergencyModalProps) => {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {emergencyReasons.map((reason) => (
-              <button
-                key={reason.id}
-                onClick={() => handleReasonClick(reason.id)}
-                className={`p-5 rounded-lg border-2 text-left transition-all hover:ring-2 hover:ring-red-300 active:scale-95 ${
-                  getSeverityColor(reason.severity)
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className={`w-6 h-6 flex-shrink-0 ${
-                    reason.severity === 'critical' ? 'text-red-600' :
-                    reason.severity === 'high' ? 'text-orange-600' :
-                    'text-yellow-600'
-                  }`} />
-                  <div>
-                    <p className="font-semibold text-gray-900 text-lg">{reason.name}</p>
-                    <p className="text-sm text-gray-600 mt-1 capitalize">
-                      Severidade: {reason.severity === 'critical' ? 'Crítica' :
-                                   reason.severity === 'high' ? 'Alta' : 'Média'}
-                    </p>
+            {stopReasons.length === 0 ? (
+              <p className="text-gray-500 text-center col-span-2 py-8">
+                Nenhum motivo de parada cadastrado. Entre em contato com o administrador.
+              </p>
+            ) : (
+              stopReasons.map((reason) => (
+                <button
+                  key={reason.id}
+                  onClick={() => handleReasonClick(reason.id)}
+                  className="p-5 rounded-lg border-2 text-left transition-all hover:ring-2 hover:ring-red-300 active:scale-95 border-red-600 bg-red-50"
+                >
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-6 h-6 flex-shrink-0 text-red-600" />
+                    <div>
+                      <p className="font-semibold text-gray-900 text-lg">{reason.name}</p>
+                      {reason.category && (
+                        <p className="text-sm text-gray-600 mt-1">{reason.category}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              ))
+            )}
           </div>
         </div>
       </div>
