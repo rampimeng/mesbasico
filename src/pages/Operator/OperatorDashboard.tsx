@@ -28,6 +28,28 @@ const OperatorDashboard = () => {
   const [wakeLock, setWakeLock] = useState<any>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Toast notification state
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'warning';
+  } | null>(null);
+
+  // Show notification that auto-dismisses after 3 seconds
+  const showNotification = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
+    setNotification({ message, type });
+  };
+
+  // Auto-dismiss notification
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 3000); // 3 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   // Load machines and stop reasons on mount
   useEffect(() => {
     console.log('🔄 OperatorDashboard mounted, loading data...');
@@ -233,7 +255,7 @@ const OperatorDashboard = () => {
     try {
       if (!user) {
         console.warn('⚠️ No user found');
-        alert('Erro: Usuário não encontrado. Faça login novamente.');
+        showNotification('Erro: Usuário não encontrado. Faça login novamente.', 'error');
         return;
       }
 
@@ -243,7 +265,7 @@ const OperatorDashboard = () => {
 
       if (machines.length === 0) {
         console.warn('⚠️ No machines available');
-        alert('Erro: Nenhuma máquina disponível. Entre em contato com o administrador.');
+        showNotification('Erro: Nenhuma máquina disponível. Entre em contato com o administrador.', 'error');
         return;
       }
 
@@ -281,7 +303,7 @@ const OperatorDashboard = () => {
           } catch (error: any) {
             errorCount++;
             console.error(`❌ Error starting machine ${machine.name}:`, error);
-            alert(`Erro ao iniciar máquina ${machine.name}: ${error.message}`);
+            showNotification(`Erro ao iniciar máquina ${machine.name}: ${error.message}`, 'error');
           }
         } else {
           console.log(`⏭️ Skipping machine ${machine.name}, already running (status: ${machine.status})`);
@@ -291,18 +313,18 @@ const OperatorDashboard = () => {
       console.log(`✅ Shift started! Success: ${successCount}, Errors: ${errorCount}`);
 
       if (successCount > 0) {
-        alert(`${successCount} máquina(s) iniciada(s) com sucesso!`);
+        showNotification(`${successCount} máquina(s) iniciada(s) com sucesso!`, 'success');
       }
 
       if (errorCount > 0) {
-        alert(`${errorCount} máquina(s) falharam ao iniciar. Verifique o console.`);
+        showNotification(`${errorCount} máquina(s) falharam ao iniciar.`, 'error');
       }
 
       // Reload shift start time
       await loadShiftStartTime();
     } catch (error: any) {
       console.error('❌ Error in handleStartShift:', error);
-      alert(`Erro ao iniciar turno: ${error.message}`);
+      showNotification(`Erro ao iniciar turno: ${error.message}`, 'error');
     }
   };
 
@@ -513,6 +535,25 @@ const OperatorDashboard = () => {
           onClose={() => setShowEmergencyModal(false)}
           onConfirm={handleEmergencyConfirm}
         />
+      )}
+
+      {/* Toast Notification */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 animate-fade-in">
+          <div
+            className={`px-6 py-4 rounded-lg shadow-2xl border-2 flex items-center gap-3 min-w-[300px] max-w-md ${
+              notification.type === 'success'
+                ? 'bg-green-50 border-green-400 text-green-800'
+                : notification.type === 'error'
+                ? 'bg-red-50 border-red-400 text-red-800'
+                : 'bg-yellow-50 border-yellow-400 text-yellow-800'
+            }`}
+          >
+            <div className="flex-1">
+              <p className="font-semibold text-lg">{notification.message}</p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
