@@ -26,34 +26,34 @@ export class AuthSupabaseController {
         .single();
 
       if (userError || !user) {
-        return sendUnauthorized(res, 'Invalid credentials');
+        return sendUnauthorized(res, 'E-mail não cadastrado');
       }
 
       // Verificar se o usuário está ativo
       if (!user.active) {
-        return sendUnauthorized(res, 'User account is disabled');
+        return sendUnauthorized(res, 'Conta de usuário desativada');
       }
 
       // Verificar senha
       const passwordMatch = await comparePassword(password, user.password);
       if (!passwordMatch) {
-        return sendUnauthorized(res, 'Invalid credentials');
+        return sendUnauthorized(res, 'Usuário ou senha incorretos');
       }
 
       // Verificar se a empresa está ativa (exceto para MASTER)
       if (user.role !== 'MASTER' && user.company && !user.company.active) {
-        return sendUnauthorized(res, 'Company account is disabled');
+        return sendUnauthorized(res, 'Conta da empresa desativada');
       }
 
       // Verificar MFA se necessário
       if (user.mfaEnabled) {
         if (!mfaCode) {
-          return sendError(res, 'MFA code is required', 400);
+          return sendError(res, 'Código MFA é obrigatório', 400);
         }
         // TODO: Implementar verificação real de MFA (TOTP)
         // Por enquanto, aceita qualquer código para demonstração
         if (mfaCode !== '123456') {
-          return sendUnauthorized(res, 'Invalid MFA code');
+          return sendUnauthorized(res, 'Código MFA inválido');
         }
       }
 

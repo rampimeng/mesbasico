@@ -22,7 +22,10 @@
       "Bash(powershell -Command \"Stop-Process -Id 5420,34592 -Force\")",
       "Bash(npx ts-node:*)",
       "Bash(npm run verify-master-password:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(powershell -Command \"Stop-Process -Id 24704 -Force\")",
+      "Bash(npx serve -s . -l 3000)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []
