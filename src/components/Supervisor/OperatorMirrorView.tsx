@@ -41,6 +41,22 @@ const OperatorMirrorView = ({
   const operator = users.find((u) => u.id === operatorId);
   const operatorGroupIds = operator?.groupIds || [];
 
+  console.log('🔍 OperatorMirrorView Debug:', {
+    operatorId,
+    operatorName,
+    operator,
+    operatorGroupIds,
+    allMachinesCount: allMachines.length,
+    allMachines: allMachines.map(m => ({
+      id: m.id,
+      name: m.name,
+      groupId: m.groupId,
+      operatorIds: m.operatorIds,
+      status: m.status,
+      currentOperatorId: m.currentOperatorId
+    }))
+  });
+
   // Filter machines that belong to operator's groups OR have this operator assigned
   const operatorMachines: Machine[] = allMachines.filter((m) => {
     // Check if machine belongs to one of operator's groups
@@ -48,8 +64,18 @@ const OperatorMirrorView = ({
     // Check if operator is directly assigned to this machine
     const directlyAssigned = m.operatorIds && m.operatorIds.includes(operatorId);
 
+    console.log(`🔎 Machine ${m.name}:`, {
+      groupId: m.groupId,
+      operatorIds: m.operatorIds,
+      belongsToGroup,
+      directlyAssigned,
+      willShow: belongsToGroup || directlyAssigned
+    });
+
     return belongsToGroup || directlyAssigned;
   });
+
+  console.log('✅ Filtered operator machines:', operatorMachines.length);
 
   return (
     <div className="space-y-6">

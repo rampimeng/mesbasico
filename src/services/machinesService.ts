@@ -23,10 +23,12 @@ export const machinesService = {
 
   // Get all machines (Admin/Supervisor)
   async getAll() {
+    console.log('🔍 Fetching ALL machines from:', `${API_URL}/machines`);
     const response = await fetch(`${API_URL}/machines`, {
       headers: getAuthHeader(),
     });
     const data = await response.json();
+    console.log('📦 All machines response:', { ok: response.ok, status: response.status, data });
     if (!response.ok) throw new Error(data.error || 'Failed to fetch machines');
     return data.data;
   },
