@@ -18,6 +18,27 @@ const LoginPage = () => {
   const [showMfa, setShowMfa] = useState(false);
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [isErrorFadingOut, setIsErrorFadingOut] = useState(false);
+
+  // Auto-dismiss error after 5 seconds
+  useEffect(() => {
+    if (error) {
+      setIsErrorFadingOut(false);
+      const fadeTimer = setTimeout(() => {
+        setIsErrorFadingOut(true);
+      }, 4500); // Start fade-out at 4.5s
+
+      const removeTimer = setTimeout(() => {
+        setError('');
+        setIsErrorFadingOut(false);
+      }, 5000); // Remove at 5s
+
+      return () => {
+        clearTimeout(fadeTimer);
+        clearTimeout(removeTimer);
+      };
+    }
+  }, [error]);
 
   // Load saved credentials on mount
   useEffect(() => {
@@ -182,7 +203,7 @@ const LoginPage = () => {
             )}
 
             {error && (
-              <div className="bg-red-50 border-2 border-red-400 text-red-700 px-4 py-4 rounded-lg shadow-lg animate-shake">
+              <div className={`bg-red-50 border-2 border-red-400 text-red-700 px-4 py-4 rounded-lg shadow-lg ${isErrorFadingOut ? 'animate-fade-out' : 'animate-shake'}`}>
                 <p className="text-center font-semibold text-base">{error}</p>
               </div>
             )}
