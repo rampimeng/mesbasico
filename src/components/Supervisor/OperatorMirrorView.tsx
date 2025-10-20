@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { X, Monitor, Edit } from 'lucide-react';
 import { useMachineStore } from '@/store/machineStore';
 import { useRegistrationStore } from '@/store/registrationStore';
@@ -21,17 +22,34 @@ const OperatorMirrorView = ({
   interactive = false,
 }: OperatorMirrorViewProps) => {
   const company = useAuthStore((state) => state.company);
-  const { machines: allMachines } = useMachineStore();
+  const { machines: allMachines, loadAllMachines } = useMachineStore();
   const users = useRegistrationStore((state) => state.getOperators(company?.id || ''));
+
+  // Load all machines when component mounts
+  useEffect(() => {
+    loadAllMachines();
+
+    // Set up polling to refresh data every 2 seconds for real-time updates
+    const interval = setInterval(() => {
+      loadAllMachines();
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [loadAllMachines]);
 
   // Get operator's groupIds
   const operator = users.find((u) => u.id === operatorId);
   const operatorGroupIds = operator?.groupIds || [];
 
-  // Filter machines that belong to operator's groups
-  const operatorMachines: Machine[] = allMachines.filter((m) =>
-    m.groupId && operatorGroupIds.includes(m.groupId)
-  );
+  // Filter machines that belong to operator's groups OR have this operator assigned
+  const operatorMachines: Machine[] = allMachines.filter((m) => {
+    // Check if machine belongs to one of operator's groups
+    const belongsToGroup = m.groupId && operatorGroupIds.includes(m.groupId);
+    // Check if operator is directly assigned to this machine
+    const directlyAssigned = m.operatorIds && m.operatorIds.includes(operatorId);
+
+    return belongsToGroup || directlyAssigned;
+  });
 
   return (
     <div className="space-y-6">

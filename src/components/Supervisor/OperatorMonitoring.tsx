@@ -8,14 +8,21 @@ import OperatorMirrorView from './OperatorMirrorView';
 const OperatorMonitoring = () => {
   const { company } = useAuthStore();
   const { operators, groups, loadOperators, loadGroups } = useRegistrationStore();
-  const { machines, loadMyMachines } = useMachineStore();
+  const { machines, loadAllMachines } = useMachineStore();
   const [selectedOperator, setSelectedOperator] = useState<string | null>(null);
 
   useEffect(() => {
     loadOperators();
     loadGroups();
-    loadMyMachines();
-  }, [loadOperators, loadGroups, loadMyMachines]);
+    loadAllMachines();
+
+    // Set up polling to refresh machines every 2 seconds for real-time status
+    const interval = setInterval(() => {
+      loadAllMachines();
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [loadOperators, loadGroups, loadAllMachines]);
 
   // Get company operators
   const companyOperators = useMemo(() => {

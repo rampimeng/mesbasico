@@ -10,6 +10,7 @@ interface MachineStore {
   loading: boolean;
   error: string | null;
   loadMyMachines: () => Promise<void>;
+  loadAllMachines: () => Promise<void>;
   setMachines: (machines: Machine[]) => void;
   setMatrices: (matrices: Matrix[]) => void;
   updateMachineStatus: (machineId: string, status: MachineStatus, operatorId?: string, stopReasonId?: string) => Promise<void>;
@@ -55,6 +56,20 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
       set({ machines, matrices, loading: false });
     } catch (error: any) {
       console.error('❌ Error loading machines:', error);
+      set({ error: error.message, loading: false });
+    }
+  },
+
+  loadAllMachines: async () => {
+    try {
+      set({ loading: true, error: null });
+      console.log('🔄 Loading all machines (Admin/Supervisor)...');
+      const machines = await machinesService.getAll();
+      console.log('✅ Loaded all machines:', machines);
+      const matrices = generateMatrices(machines);
+      set({ machines, matrices, loading: false });
+    } catch (error: any) {
+      console.error('❌ Error loading all machines:', error);
       set({ error: error.message, loading: false });
     }
   },
