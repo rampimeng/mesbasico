@@ -8,14 +8,14 @@ import OperatorMirrorView from './OperatorMirrorView';
 const OperatorMonitoring = () => {
   const { company } = useAuthStore();
   const { operators, groups, loadOperators, loadGroups } = useRegistrationStore();
-  const { machines, loadMachines } = useMachineStore();
+  const { machines, loadMyMachines } = useMachineStore();
   const [selectedOperator, setSelectedOperator] = useState<string | null>(null);
 
   useEffect(() => {
     loadOperators();
     loadGroups();
-    loadMachines();
-  }, [loadOperators, loadGroups, loadMachines]);
+    loadMyMachines();
+  }, [loadOperators, loadGroups, loadMyMachines]);
 
   // Get company operators
   const companyOperators = useMemo(() => {
