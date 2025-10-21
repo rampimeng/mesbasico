@@ -9,7 +9,10 @@ interface StopReasonModalProps {
 
 const StopReasonModal = ({ onClose, onConfirm }: StopReasonModalProps) => {
   const company = useAuthStore((state) => state.company);
-  const stopReasons = useRegistrationStore((state) => state.getStopReasons(company?.id || ''));
+  const allStopReasons = useRegistrationStore((state) => state.getStopReasons(company?.id || ''));
+
+  // Filtrar motivos do sistema (como "Turno Encerrado") que não devem aparecer para o operador
+  const stopReasons = allStopReasons.filter(reason => reason.name !== 'Turno Encerrado');
 
   const handleReasonClick = (reasonId: string) => {
     console.log('✋ StopReasonModal: User clicked reason:', reasonId);
