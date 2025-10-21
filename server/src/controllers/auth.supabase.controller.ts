@@ -4,6 +4,7 @@ import { comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { sendSuccess, sendError, sendUnauthorized } from '../utils/response';
 import { LoginRequest, LoginResponse } from '../types';
+import { ensureSystemStopReasons } from '../utils/ensureSystemStopReasons';
 
 export class AuthSupabaseController {
   async login(req: Request, res: Response) {
@@ -64,6 +65,16 @@ export class AuthSupabaseController {
         role: user.role,
         companyId: user.companyId || undefined,
       });
+
+      // Garantir que os motivos de parada do sistema existam
+      if (user.companyId) {
+        try {
+          await ensureSystemStopReasons(user.companyId);
+        } catch (error) {
+          console.error('⚠️ Warning: Failed to ensure system stop reasons:', error);
+          // Não bloquear o login se falhar
+        }
+      }
 
       // Registrar login no audit log
       await supabase.from('audit_logs').insert({

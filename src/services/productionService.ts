@@ -95,4 +95,17 @@ export const productionService = {
     if (!response.ok) throw new Error(data.error || 'Failed to fetch shift start time');
     return data.data;
   },
+
+  // Get shift end reason ID (creates "Turno Encerrado" if doesn't exist)
+  async getShiftEndReasonId(): Promise<string> {
+    console.log('🔍 Getting shift end reason ID...');
+    const response = await fetch(`${API_URL}/production/sessions/shift-end-reason`, {
+      method: 'GET',
+      headers: getAuthHeader(),
+    });
+    const data = await response.json();
+    console.log('📦 Shift end reason response:', { ok: response.ok, status: response.status, data });
+    if (!response.ok) throw new Error(data.error || 'Failed to get shift end reason');
+    return data.data.shiftEndReasonId;
+  },
 };

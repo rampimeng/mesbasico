@@ -338,17 +338,9 @@ const OperatorDashboard = () => {
 
       console.log('🏁 Ending shift for operator:', user.name);
 
-      // Buscar o motivo de parada "Turno Encerrado"
-      const { stopReasons } = useRegistrationStore.getState();
-      const shiftEndReason = stopReasons.find(r => r.name === 'Turno Encerrado');
-
-      if (!shiftEndReason) {
-        console.error('❌ Stop reason "Turno Encerrado" not found');
-        showNotification('Erro: Motivo "Turno Encerrado" não cadastrado. Entre em contato com o administrador.', 'error');
-        return;
-      }
-
-      console.log('📋 Using stop reason:', shiftEndReason.name, '(ID:', shiftEndReason.id, ')');
+      // Buscar ou criar o motivo de parada "Turno Encerrado" via API
+      const shiftEndReasonId = await productionService.getShiftEndReasonId();
+      console.log('📋 Using shift end reason ID:', shiftEndReasonId);
 
       // Parar todas as máquinas ativas com o motivo "Turno Encerrado"
       let successCount = 0;
@@ -358,7 +350,7 @@ const OperatorDashboard = () => {
         if (machine.status !== MachineStatus.IDLE && machine.status !== MachineStatus.STOPPED) {
           console.log(`🛑 Stopping machine ${machine.name} with reason "Turno Encerrado"`);
           try {
-            await updateMachineStatus(machine.id, MachineStatus.STOPPED, user.id, shiftEndReason.id);
+            await updateMachineStatus(machine.id, MachineStatus.STOPPED, user.id, shiftEndReasonId);
             successCount++;
             console.log(`✅ Machine ${machine.name} stopped successfully`);
           } catch (error: any) {

@@ -4,61 +4,35 @@
 
 Esta migration adiciona o campo `excludeFromPareto` ao modelo `StopReason`, permitindo que certos motivos de parada não apareçam no gráfico de Pareto.
 
+### ✅ CRIAÇÃO AUTOMÁTICA DO MOTIVO "TURNO ENCERRADO"
+
+**IMPORTANTE:** O motivo "Turno Encerrado" é criado **AUTOMATICAMENTE** para cada empresa!
+
+- ✅ Criado no primeiro login de qualquer usuário da empresa
+- ✅ Pode ser obtido via endpoint `/api/production/sessions/shift-end-reason`
+- ✅ Automaticamente marcado com `excludeFromPareto = true`
+- ✅ Funciona para TODAS as empresas do sistema (multi-tenant)
+
+**Você NÃO precisa criar manualmente!**
+
 ### Aplicar no Servidor (Easypanel)
 
-1. **Conecte-se ao servidor via SSH:**
-   ```bash
-   ssh user@your-server
-   ```
+1. **Execute a migration no banco de dados:**
 
-2. **Execute a migration manualmente no banco de dados:**
-
-   Você pode fazer isso de duas formas:
-
-   **Opção A: Via Prisma (Recomendado)**
-   ```bash
-   cd /path/to/your/app/server
-   npx prisma migrate deploy
-   ```
-
-   **Opção B: Via SQL direto no Supabase**
-   - Acesse o painel do Supabase
-   - Vá em SQL Editor
-   - Execute o seguinte SQL:
+   Acesse o painel do **Supabase** > SQL Editor e execute:
    ```sql
    ALTER TABLE "stop_reasons" ADD COLUMN "excludeFromPareto" BOOLEAN NOT NULL DEFAULT false;
    ```
 
-3. **Criar o motivo de parada "Turno Encerrado":**
-
-   No painel do Admin da aplicação:
-   - Vá em **Cadastros > Motivos de Parada**
-   - Clique em "Novo Motivo"
-   - Preencha:
-     - **Nome:** Turno Encerrado
-     - **Categoria:** OTHER
-     - **Descrição:** Parada automática ao encerrar turno
-     - **Excluir do Pareto:** ✅ (marcar como true)
-
-   OU execute este SQL no Supabase:
-   ```sql
-   INSERT INTO "stop_reasons" ("id", "companyId", "name", "category", "description", "excludeFromPareto", "createdAt", "updatedAt")
-   VALUES (
-     gen_random_uuid(),
-     'YOUR_COMPANY_ID', -- Substitua pelo ID da sua empresa
-     'Turno Encerrado',
-     'OTHER',
-     'Parada automática ao encerrar turno do operador',
-     true,
-     NOW(),
-     NOW()
-   );
-   ```
-
-4. **Reinicie o servidor backend:**
+2. **Reinicie o servidor backend:**
    ```bash
    # No Easypanel, faça um redeploy do serviço backend
    ```
+
+3. **Pronto!**
+   - O motivo "Turno Encerrado" será criado automaticamente no primeiro login
+   - Funciona para todas as empresas
+   - Sem necessidade de configuração manual
 
 ## Mudanças Implementadas
 

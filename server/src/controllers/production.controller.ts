@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import supabase from '../config/supabase';
+import { getOrCreateShiftEndReason } from '../utils/ensureSystemStopReasons';
 
 // Start a production session
 export const startSession = async (req: Request, res: Response) => {
@@ -512,6 +513,33 @@ export const endSession = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to end production session',
+    });
+  }
+};
+
+// Get shift end stop reason ID (creates if doesn't exist)
+export const getShiftEndReasonId = async (req: Request, res: Response) => {
+  try {
+    const { companyId } = req.user!;
+
+    console.log('🔍 Getting shift end reason for company:', companyId);
+
+    // Get or create the "Turno Encerrado" reason
+    const reasonId = await getOrCreateShiftEndReason(companyId);
+
+    console.log('✅ Shift end reason ID:', reasonId);
+
+    res.json({
+      success: true,
+      data: {
+        shiftEndReasonId: reasonId,
+      },
+    });
+  } catch (error: any) {
+    console.error('❌ Exception in getShiftEndReasonId:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get shift end reason',
     });
   }
 };
