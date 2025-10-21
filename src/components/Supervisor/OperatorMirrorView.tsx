@@ -51,28 +51,27 @@ const OperatorMirrorView = ({
       id: m.id,
       name: m.name,
       groupId: m.groupId,
-      operatorIds: m.operatorIds,
       status: m.status,
       currentOperatorId: m.currentOperatorId
     }))
   });
 
-  // Filter machines that belong to operator's groups OR have this operator assigned
+  // Filter machines that belong to operator's groups OR are currently operated by this operator
   const operatorMachines: Machine[] = allMachines.filter((m) => {
     // Check if machine belongs to one of operator's groups
     const belongsToGroup = m.groupId && operatorGroupIds.includes(m.groupId);
-    // Check if operator is directly assigned to this machine
-    const directlyAssigned = m.operatorIds && m.operatorIds.includes(operatorId);
+    // Check if this operator is currently operating the machine
+    const currentlyOperating = m.currentOperatorId === operatorId;
 
     console.log(`🔎 Machine ${m.name}:`, {
       groupId: m.groupId,
-      operatorIds: m.operatorIds,
+      currentOperatorId: m.currentOperatorId,
       belongsToGroup,
-      directlyAssigned,
-      willShow: belongsToGroup || directlyAssigned
+      currentlyOperating,
+      willShow: belongsToGroup || currentlyOperating
     });
 
-    return belongsToGroup || directlyAssigned;
+    return belongsToGroup || currentlyOperating;
   });
 
   console.log('✅ Filtered operator machines:', operatorMachines.length);
