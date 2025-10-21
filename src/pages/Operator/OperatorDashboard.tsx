@@ -313,7 +313,7 @@ const OperatorDashboard = () => {
       console.log(`✅ Shift started! Success: ${successCount}, Errors: ${errorCount}`);
 
       if (successCount > 0) {
-        showNotification(`${successCount} máquina(s) iniciada(s) com sucesso!`, 'success');
+        showNotification(`Turno iniciado! ${successCount} máquina(s) em produção.`, 'success');
       }
 
       if (errorCount > 0) {
@@ -328,25 +328,84 @@ const OperatorDashboard = () => {
     }
   };
 
-  const handleEmergencyStop = () => {
+  const handleEndShift = async () => {
+    try {
+      if (!user) {
+        console.warn('⚠️ No user found');
+        showNotification('Erro: Usuário não encontrado. Faça login novamente.', 'error');
+        return;
+      }
+
+      console.log('🏁 Ending shift for operator:', user.name);
+
+      // Buscar o motivo de parada "Turno Encerrado"
+      const { stopReasons } = useRegistrationStore.getState();
+      const shiftEndReason = stopReasons.find(r => r.name === 'Turno Encerrado');
+
+      if (!shiftEndReason) {
+        console.error('❌ Stop reason "Turno Encerrado" not found');
+        showNotification('Erro: Motivo "Turno Encerrado" não cadastrado. Entre em contato com o administrador.', 'error');
+        return;
+      }
+
+      console.log('📋 Using stop reason:', shiftEndReason.name, '(ID:', shiftEndReason.id, ')');
+
+      // Parar todas as máquinas ativas com o motivo "Turno Encerrado"
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const machine of machines) {
+        if (machine.status !== MachineStatus.IDLE && machine.status !== MachineStatus.STOPPED) {
+          console.log(`🛑 Stopping machine ${machine.name} with reason "Turno Encerrado"`);
+          try {
+            await updateMachineStatus(machine.id, MachineStatus.STOPPED, user.id, shiftEndReason.id);
+            successCount++;
+            console.log(`✅ Machine ${machine.name} stopped successfully`);
+          } catch (error: any) {
+            errorCount++;
+            console.error(`❌ Error stopping machine ${machine.name}:`, error);
+            showNotification(`Erro ao parar máquina ${machine.name}: ${error.message}`, 'error');
+          }
+        }
+      }
+
+      console.log(`✅ Shift ended! Success: ${successCount}, Errors: ${errorCount}`);
+
+      if (successCount > 0) {
+        showNotification(`Turno encerrado! ${successCount} máquina(s) parada(s).`, 'success');
+      }
+
+      if (errorCount > 0) {
+        showNotification(`${errorCount} máquina(s) falharam ao parar.`, 'error');
+      }
+
+      // Reset shift start time
+      setShiftStartTime(null);
+      setShiftDuration('00:00:00');
+    } catch (error: any) {
+      console.error('❌ Error in handleEndShift:', error);
+      showNotification(`Erro ao encerrar turno: ${error.message}`, 'error');
+    }
+  };
+
+  const handlePauseAll = () => {
     setShowEmergencyModal(true);
   };
 
-  const handleEmergencyConfirm = async (reasonId: string) => {
+  const handlePauseAllConfirm = async (reasonId: string) => {
     if (!user) return;
 
-    console.log('🚨 Emergency stop confirmed with reason:', reasonId);
+    console.log('⏸️ Pause all confirmed with reason:', reasonId);
 
-    // Parar todas as máquinas com status STOPPED (não EMERGENCY)
-    // Isso garante que o motivo seja registrado e as máquinas mostrem "Reiniciar"
+    // Parar todas as máquinas com status STOPPED
     for (const machine of machines) {
-      if (machine.status !== MachineStatus.IDLE) {
+      if (machine.status !== MachineStatus.IDLE && machine.status !== MachineStatus.STOPPED) {
         console.log(`🛑 Stopping machine ${machine.name} (ID: ${machine.id}) with reason ${reasonId}`);
         await updateMachineStatus(machine.id, MachineStatus.STOPPED, user.id, reasonId);
       }
     }
 
-    showNotification('Emergência registrada! Todas as máquinas foram paradas.', 'warning');
+    showNotification('Pausa geral registrada! Todas as máquinas foram paradas.', 'warning');
     setShowEmergencyModal(false);
   };
 
@@ -368,15 +427,13 @@ const OperatorDashboard = () => {
     }
   };
 
-  // Todas as máquinas já estão rodando? Desabilita "Iniciar Turno"
-  const allMachinesRunning = machines.every(
-    (m) => m.status === MachineStatus.NORMAL_RUNNING
-  );
-
-  // Alguma máquina está ativa (não IDLE e não STOPPED)? Habilita Emergência e Adicionar Giro
+  // Alguma máquina está ativa (não IDLE e não STOPPED)?
   const anyMachineActive = machines.some(
     (m) => m.status !== MachineStatus.IDLE && m.status !== MachineStatus.STOPPED
   );
+
+  // Turno está ativo se houver máquinas ativas OU se tiver shift start time
+  const shiftIsActive = anyMachineActive || shiftStartTime !== null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -469,22 +526,31 @@ const OperatorDashboard = () => {
       {/* Quick Actions */}
       <div className="max-w-full mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <button
-            onClick={handleStartShift}
-            disabled={allMachinesRunning}
-            className="btn-success btn-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Play className="w-8 h-8" />
-            <span>Iniciar Turno</span>
-          </button>
+          {!shiftIsActive ? (
+            <button
+              onClick={handleStartShift}
+              className="btn-success btn-lg flex items-center justify-center gap-3"
+            >
+              <Play className="w-8 h-8" />
+              <span>Iniciar Turno</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleEndShift}
+              className="btn-danger btn-lg flex items-center justify-center gap-3"
+            >
+              <LogOut className="w-8 h-8" />
+              <span>Encerrar Turno</span>
+            </button>
+          )}
 
           <button
-            onClick={handleEmergencyStop}
+            onClick={handlePauseAll}
             disabled={!anyMachineActive}
-            className="btn-danger btn-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed animate-pulse"
+            className="btn-warning btn-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <AlertTriangle className="w-8 h-8" />
-            <span>EMERGÊNCIA</span>
+            <span>PAUSA GERAL</span>
           </button>
 
           <button
@@ -535,11 +601,11 @@ const OperatorDashboard = () => {
         )}
       </div>
 
-      {/* Emergency Modal */}
+      {/* Pause All Modal */}
       {showEmergencyModal && (
         <EmergencyModal
           onClose={() => setShowEmergencyModal(false)}
-          onConfirm={handleEmergencyConfirm}
+          onConfirm={handlePauseAllConfirm}
         />
       )}
 
