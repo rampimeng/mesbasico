@@ -9,19 +9,19 @@ export const getCycleLogs = async (req: Request, res: Response) => {
 
     console.log('🔍 Fetching cycle logs for company:', companyId);
 
-    // Buscar machine_activities com filtros
+    // Buscar cycle_logs com filtros
     let query = supabase
-      .from('machine_activities')
+      .from('cycle_logs')
       .select('*')
-      .gt('cyclesCount', 0) // Apenas atividades com giros registrados
-      .order('createdAt', { ascending: false });
+      .eq('companyId', companyId)
+      .order('cycleCompletedAt', { ascending: false });
 
     // Aplicar filtros
     if (startDate) {
-      query = query.gte('startTime', startDate as string);
+      query = query.gte('cycleCompletedAt', startDate as string);
     }
     if (endDate) {
-      query = query.lte('startTime', endDate as string);
+      query = query.lte('cycleCompletedAt', endDate as string);
     }
     if (machineId) {
       query = query.eq('machineId', machineId as string);
@@ -30,7 +30,7 @@ export const getCycleLogs = async (req: Request, res: Response) => {
       query = query.eq('operatorId', operatorId as string);
     }
 
-    const { data: activities, error } = await query;
+    const { data: cycleLogs, error } = await query;
 
     if (error) {
       console.error('❌ Error fetching cycle logs:', error);
@@ -41,14 +41,13 @@ export const getCycleLogs = async (req: Request, res: Response) => {
     }
 
     // Buscar informações adicionais (máquinas e operadores)
-    const machineIds = [...new Set(activities?.map((a: any) => a.machineId) || [])];
-    const operatorIds = [...new Set(activities?.map((a: any) => a.operatorId) || [])];
+    const machineIds = [...new Set(cycleLogs?.map((c: any) => c.machineId) || [])];
+    const operatorIds = [...new Set(cycleLogs?.map((c: any) => c.operatorId) || [])];
 
-    // Buscar máquinas da mesma empresa
+    // Buscar máquinas
     const { data: machines } = await supabase
       .from('machines')
       .select('id, name')
-      .eq('companyId', companyId)
       .in('id', machineIds);
 
     // Buscar operadores
@@ -61,36 +60,24 @@ export const getCycleLogs = async (req: Request, res: Response) => {
     const machinesMap = new Map(machines?.map((m: any) => [m.id, m]) || []);
     const operatorsMap = new Map(operators?.map((o: any) => [o.id, o]) || []);
 
-    // Transformar dados para o formato esperado pelo frontend
-    const cycleLogs = activities
-      ?.filter((activity: any) => {
-        // Filtrar apenas atividades de máquinas da empresa
-        return machinesMap.has(activity.machineId);
-      })
-      .map((activity: any) => {
-        const machine = machinesMap.get(activity.machineId);
-        const operator = operatorsMap.get(activity.operatorId);
+    // Enriquecer dados com nomes
+    const enrichedCycleLogs = cycleLogs?.map((cycle: any) => {
+      const machine = machinesMap.get(cycle.machineId);
+      const operator = operatorsMap.get(cycle.operatorId);
 
-        return {
-          id: activity.id,
-          companyId,
-          sessionId: activity.id,
-          machineId: activity.machineId,
-          operatorId: activity.operatorId,
-          cycleCompletedAt: activity.endTime || activity.startTime,
-          cyclesCount: activity.cyclesCount,
-          machineName: machine?.name || 'Desconhecida',
-          operatorName: operator?.name || 'Desconhecido',
-          createdAt: activity.createdAt,
-          updatedAt: activity.createdAt,
-        };
-      }) || [];
+      return {
+        ...cycle,
+        cyclesCount: 1, // Cada registro de cycle_log representa 1 ciclo
+        machineName: machine?.name || 'Desconhecida',
+        operatorName: operator?.name || 'Desconhecido',
+      };
+    }) || [];
 
-    console.log(`✅ Found ${cycleLogs.length} cycle logs`);
+    console.log(`✅ Found ${enrichedCycleLogs.length} cycle logs`);
 
     res.json({
       success: true,
-      data: cycleLogs,
+      data: enrichedCycleLogs,
     });
   } catch (error: any) {
     console.error('❌ Exception in getCycleLogs:', error);
@@ -109,23 +96,30 @@ export const getTimeLogs = async (req: Request, res: Response) => {
 
     console.log('🔍 Fetching time logs for company:', companyId);
 
-    // Buscar matrix_activities
+    // Buscar time_logs com filtros
     let query = supabase
-      .from('matrix_activities')
+      .from('time_logs')
       .select('*')
-      .eq('status', 'STOPPED') // Apenas paradas
+      .eq('companyId', companyId)
+      .in('status', ['STOPPED', 'EMERGENCY']) // Apenas paradas
       .not('stopReasonId', 'is', null) // Apenas com motivo de parada
-      .order('createdAt', { ascending: false });
+      .order('startedAt', { ascending: false });
 
     // Aplicar filtros de data
     if (startDate) {
-      query = query.gte('startTime', startDate as string);
+      query = query.gte('startedAt', startDate as string);
     }
     if (endDate) {
-      query = query.lte('startTime', endDate as string);
+      query = query.lte('startedAt', endDate as string);
+    }
+    if (machineId) {
+      query = query.eq('machineId', machineId as string);
+    }
+    if (operatorId) {
+      query = query.eq('operatorId', operatorId as string);
     }
 
-    const { data: activities, error } = await query;
+    const { data: timeLogs, error } = await query;
 
     if (error) {
       console.error('❌ Error fetching time logs:', error);
@@ -136,26 +130,17 @@ export const getTimeLogs = async (req: Request, res: Response) => {
     }
 
     // Buscar informações adicionais
-    const matrixIds = [...new Set(activities?.map((a: any) => a.matrixId) || [])];
-    const stopReasonIds = [...new Set(activities?.map((a: any) => a.stopReasonId).filter(Boolean) || [])];
+    const machineIds = [...new Set(timeLogs?.map((t: any) => t.machineId) || [])];
+    const operatorIds = [...new Set(timeLogs?.map((t: any) => t.operatorId) || [])];
+    const stopReasonIds = [...new Set(timeLogs?.map((t: any) => t.stopReasonId).filter(Boolean) || [])];
 
-    // Buscar matrizes e suas máquinas
-    const { data: matrices } = await supabase
-      .from('matrices')
-      .select('id, matrixNumber, machineId')
-      .in('id', matrixIds);
-
-    const machineIds = [...new Set(matrices?.map((m: any) => m.machineId) || [])];
-
-    // Buscar máquinas da mesma empresa
+    // Buscar máquinas
     const { data: machines } = await supabase
       .from('machines')
-      .select('id, name, currentOperatorId, companyId')
-      .eq('companyId', companyId)
+      .select('id, name')
       .in('id', machineIds);
 
     // Buscar operadores
-    const operatorIds = [...new Set(machines?.map((m: any) => m.currentOperatorId).filter(Boolean) || [])];
     const { data: operators } = await supabase
       .from('users')
       .select('id, name')
@@ -168,58 +153,29 @@ export const getTimeLogs = async (req: Request, res: Response) => {
       .in('id', stopReasonIds);
 
     // Criar mapas para lookup rápido
-    const matricesMap = new Map(matrices?.map((m: any) => [m.id, m]) || []);
     const machinesMap = new Map(machines?.map((m: any) => [m.id, m]) || []);
     const operatorsMap = new Map(operators?.map((o: any) => [o.id, o]) || []);
     const stopReasonsMap = new Map(stopReasons?.map((r: any) => [r.id, r]) || []);
 
-    // Transformar dados e aplicar filtros adicionais
-    let timeLogs = activities
-      ?.map((activity: any) => {
-        const matrix = matricesMap.get(activity.matrixId);
-        if (!matrix) return null;
+    // Enriquecer dados com nomes
+    const enrichedTimeLogs = timeLogs?.map((log: any) => {
+      const machine = machinesMap.get(log.machineId);
+      const operator = operatorsMap.get(log.operatorId);
+      const stopReason = stopReasonsMap.get(log.stopReasonId);
 
-        const machine = machinesMap.get(matrix.machineId);
-        if (!machine) return null; // Apenas atividades de máquinas da empresa
+      return {
+        ...log,
+        machineName: machine?.name || 'Desconhecida',
+        operatorName: operator?.name || 'Desconhecido',
+        stopReasonName: stopReason?.name || 'Desconhecido',
+      };
+    }) || [];
 
-        const operator = operatorsMap.get(machine.currentOperatorId);
-        const stopReason = stopReasonsMap.get(activity.stopReasonId);
-
-        return {
-          id: activity.id,
-          companyId,
-          sessionId: activity.id,
-          machineId: machine.id,
-          matrixId: activity.matrixId,
-          matrixNumber: matrix.matrixNumber,
-          status: activity.status,
-          stopReasonId: activity.stopReasonId,
-          stopReasonName: stopReason?.name || 'Desconhecido',
-          startedAt: activity.startTime,
-          endedAt: activity.endTime,
-          durationSeconds: activity.duration,
-          machineName: machine.name || 'Desconhecida',
-          operatorId: machine.currentOperatorId || '',
-          operatorName: operator?.name || 'Desconhecido',
-          createdAt: activity.createdAt,
-          updatedAt: activity.createdAt,
-        };
-      })
-      .filter(Boolean) || []; // Remove nulls
-
-    // Filtros adicionais
-    if (machineId) {
-      timeLogs = timeLogs.filter((log: any) => log.machineId === machineId);
-    }
-    if (operatorId) {
-      timeLogs = timeLogs.filter((log: any) => log.operatorId === operatorId);
-    }
-
-    console.log(`✅ Found ${timeLogs.length} time logs`);
+    console.log(`✅ Found ${enrichedTimeLogs.length} time logs`);
 
     res.json({
       success: true,
-      data: timeLogs,
+      data: enrichedTimeLogs,
     });
   } catch (error: any) {
     console.error('❌ Exception in getTimeLogs:', error);
@@ -238,28 +194,21 @@ export const deleteCycleLog = async (req: Request, res: Response) => {
 
     console.log('🗑️ Deleting cycle log:', id);
 
-    // Verificar se pertence à empresa através da máquina
-    const { data: activity } = await supabase
-      .from('machine_activities')
-      .select('id, machineId')
+    // Verificar se pertence à empresa
+    const { data: cycleLog } = await supabase
+      .from('cycle_logs')
+      .select('id, companyId')
       .eq('id', id)
       .single();
 
-    if (!activity) {
+    if (!cycleLog) {
       return res.status(404).json({
         success: false,
         error: 'Cycle log not found',
       });
     }
 
-    // Verificar se a máquina pertence à empresa
-    const { data: machine } = await supabase
-      .from('machines')
-      .select('companyId')
-      .eq('id', activity.machineId)
-      .single();
-
-    if (!machine || machine.companyId !== companyId) {
+    if (cycleLog.companyId !== companyId) {
       return res.status(404).json({
         success: false,
         error: 'Cycle log not found',
@@ -267,7 +216,7 @@ export const deleteCycleLog = async (req: Request, res: Response) => {
     }
 
     const { error } = await supabase
-      .from('machine_activities')
+      .from('cycle_logs')
       .delete()
       .eq('id', id);
 
@@ -302,42 +251,21 @@ export const deleteTimeLog = async (req: Request, res: Response) => {
 
     console.log('🗑️ Deleting time log:', id);
 
-    // Verificar se pertence à empresa através da matriz e máquina
-    const { data: activity } = await supabase
-      .from('matrix_activities')
-      .select('id, matrixId')
+    // Verificar se pertence à empresa
+    const { data: timeLog } = await supabase
+      .from('time_logs')
+      .select('id, companyId')
       .eq('id', id)
       .single();
 
-    if (!activity) {
+    if (!timeLog) {
       return res.status(404).json({
         success: false,
         error: 'Time log not found',
       });
     }
 
-    // Buscar matriz e máquina
-    const { data: matrix } = await supabase
-      .from('matrices')
-      .select('machineId')
-      .eq('id', activity.matrixId)
-      .single();
-
-    if (!matrix) {
-      return res.status(404).json({
-        success: false,
-        error: 'Time log not found',
-      });
-    }
-
-    // Verificar se a máquina pertence à empresa
-    const { data: machine } = await supabase
-      .from('machines')
-      .select('companyId')
-      .eq('id', matrix.machineId)
-      .single();
-
-    if (!machine || machine.companyId !== companyId) {
+    if (timeLog.companyId !== companyId) {
       return res.status(404).json({
         success: false,
         error: 'Time log not found',
@@ -345,7 +273,7 @@ export const deleteTimeLog = async (req: Request, res: Response) => {
     }
 
     const { error } = await supabase
-      .from('matrix_activities')
+      .from('time_logs')
       .delete()
       .eq('id', id);
 
