@@ -56,7 +56,10 @@ const ShiftFormModal = ({ shift, onClose }: ShiftFormModalProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!company) return;
+    if (!company) {
+      console.error('❌ No company found');
+      return;
+    }
 
     const shiftData = {
       companyId: company.id,
@@ -67,15 +70,21 @@ const ShiftFormModal = ({ shift, onClose }: ShiftFormModalProps) => {
       totalHours,
     };
 
+    console.log('📝 Submitting shift data:', shiftData);
+
     try {
       if (shift) {
+        console.log('✏️ Updating shift:', shift.id);
         await updateShift(shift.id, shiftData);
       } else {
+        console.log('➕ Creating new shift');
         await addShift(shiftData);
       }
+      console.log('✅ Shift saved successfully');
       onClose();
     } catch (error) {
-      console.error('Error saving shift:', error);
+      console.error('❌ Error saving shift:', error);
+      alert(`Erro ao salvar turno: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   };
 

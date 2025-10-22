@@ -196,21 +196,25 @@ export const usersService = {
 // Shifts
 export const shiftsService = {
   async getAll() {
+    console.log('🔍 Fetching all shifts from:', `${API_URL}/shifts`);
     const response = await fetch(`${API_URL}/shifts`, {
       headers: getAuthHeader(),
     });
     const data = await response.json();
+    console.log('📦 Shifts response:', { ok: response.ok, status: response.status, data });
     if (!response.ok) throw new Error(data.error);
     return data.data;
   },
 
   async create(shift: any) {
+    console.log('🔍 Creating shift:', { url: `${API_URL}/shifts`, shift });
     const response = await fetch(`${API_URL}/shifts`, {
       method: 'POST',
       headers: getAuthHeader(),
       body: JSON.stringify(shift),
     });
     const data = await response.json();
+    console.log('📦 Create shift response:', { ok: response.ok, status: response.status, data });
     if (!response.ok) throw new Error(data.error);
     return data.data;
   },
