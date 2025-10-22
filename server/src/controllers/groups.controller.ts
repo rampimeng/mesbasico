@@ -6,20 +6,36 @@ export const getAllGroups = async (req: Request, res: Response) => {
   try {
     const { companyId } = req.user!;
 
+    console.log('🔍 Fetching groups for company:', companyId);
+
     const { data: groups, error } = await supabase
       .from('groups')
-      .select(`
-        *,
-        shift:shifts(id, name, totalHours)
-      `)
+      .select('*')
       .eq('companyId', companyId)
       .order('createdAt', { ascending: false });
 
     if (error) {
+      console.error('❌ Error fetching groups:', error);
       return res.status(500).json({
         success: false,
         error: error.message,
       });
+    }
+
+    console.log(`✅ Found ${groups?.length || 0} groups`);
+
+    // Get all unique shiftIds
+    const shiftIds = [...new Set(groups?.map((g: any) => g.shiftId).filter(Boolean))] as string[];
+
+    // Fetch shifts data if there are any
+    let shiftsMap = new Map();
+    if (shiftIds.length > 0) {
+      const { data: shifts } = await supabase
+        .from('shifts')
+        .select('id, name, totalHours')
+        .in('id', shiftIds);
+
+      shiftsMap = new Map(shifts?.map((s: any) => [s.id, s]) || []);
     }
 
     // Fetch operator links for each group
@@ -33,6 +49,7 @@ export const getAllGroups = async (req: Request, res: Response) => {
         return {
           ...group,
           cyclesPerShift: group.expectedCyclesPerShift, // Map to frontend property name
+          shift: group.shiftId ? shiftsMap.get(group.shiftId) || null : null,
           operatorIds: operatorLinks?.map((link: any) => link.userId) || [],
         };
       })
