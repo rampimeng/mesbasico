@@ -147,6 +147,7 @@ export interface CycleLog {
   matrixId?: string;
   operatorId: string;
   cycleCompletedAt: Date;
+  cyclesCount?: number;
   machineName?: string;
   operatorName?: string;
   createdAt: Date;

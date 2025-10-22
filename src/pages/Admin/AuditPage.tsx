@@ -1,26 +1,70 @@
-import { useState, useEffect } from 'react';
-import { ClipboardList, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ClipboardList, Trash2, AlertCircle, CheckCircle, Download, Filter } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useAuditStore } from '@/store/auditStore';
+import { useRegistrationStore } from '@/store/registrationStore';
 import { format } from 'date-fns';
+import * as XLSX from 'xlsx';
 
 type TabType = 'cycles' | 'stops';
 
 const AuditPage = () => {
   const company = useAuthStore((state) => state.company);
   const { getCycleLogs, getTimeLogs, deleteCycleLog, deleteTimeLog, loadCycleLogs, loadTimeLogs, loading } = useAuditStore();
+  const machines = useRegistrationStore((state) => state.getMachines(company?.id || ''));
+  const operators = useRegistrationStore((state) => state.getOperators(company?.id || ''));
 
   const [activeTab, setActiveTab] = useState<TabType>('cycles');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const cycleLogs = getCycleLogs(company?.id || '');
-  const timeLogs = getTimeLogs(company?.id || '');
+  // Filtros
+  const [startDate, setStartDate] = useState('');
+  const [machineFilter, setMachineFilter] = useState('');
+  const [operatorFilter, setOperatorFilter] = useState('');
+
+  const allCycleLogs = getCycleLogs(company?.id || '');
+  const allTimeLogs = getTimeLogs(company?.id || '');
 
   // Carregar dados ao montar o componente
   useEffect(() => {
     loadCycleLogs();
     loadTimeLogs();
   }, [loadCycleLogs, loadTimeLogs]);
+
+  // Aplicar filtros
+  const cycleLogs = useMemo(() => {
+    let filtered = allCycleLogs;
+
+    if (startDate) {
+      const filterDate = new Date(startDate);
+      filtered = filtered.filter(log => new Date(log.cycleCompletedAt) >= filterDate);
+    }
+    if (machineFilter) {
+      filtered = filtered.filter(log => log.machineId === machineFilter);
+    }
+    if (operatorFilter) {
+      filtered = filtered.filter(log => log.operatorId === operatorFilter);
+    }
+
+    return filtered;
+  }, [allCycleLogs, startDate, machineFilter, operatorFilter]);
+
+  const timeLogs = useMemo(() => {
+    let filtered = allTimeLogs;
+
+    if (startDate) {
+      const filterDate = new Date(startDate);
+      filtered = filtered.filter(log => new Date(log.startedAt) >= filterDate);
+    }
+    if (machineFilter) {
+      filtered = filtered.filter(log => log.machineId === machineFilter);
+    }
+    if (operatorFilter) {
+      filtered = filtered.filter(log => log.operatorId === operatorFilter);
+    }
+
+    return filtered;
+  }, [allTimeLogs, startDate, machineFilter, operatorFilter]);
 
   const handleDeleteCycle = async (id: string) => {
     try {
@@ -40,6 +84,49 @@ const AuditPage = () => {
     }
   };
 
+  const exportCyclesToExcel = () => {
+    const data = cycleLogs.map(log => ({
+      'Máquina': log.machineName || log.machineId,
+      'Operador': log.operatorName || log.operatorId,
+      'Data': format(new Date(log.cycleCompletedAt), 'dd/MM/yyyy'),
+      'Hora': format(new Date(log.cycleCompletedAt), 'HH:mm:ss'),
+      'Ciclos': log.cyclesCount || 1,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Registro de Giros');
+
+    const fileName = `Registro_Giros_${format(new Date(), 'dd-MM-yyyy_HH-mm')}.xls`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
+  const exportStopsToExcel = () => {
+    const data = timeLogs.map(log => ({
+      'Máquina': log.machineName || log.machineId,
+      'Matriz': log.matrixNumber || '-',
+      'Operador': log.operatorName || log.operatorId,
+      'Motivo de Parada': log.stopReasonName || 'Desconhecido',
+      'Data Início': format(new Date(log.startedAt), 'dd/MM/yyyy'),
+      'Hora Início': format(new Date(log.startedAt), 'HH:mm:ss'),
+      'Duração (min)': log.durationSeconds ? Math.round(log.durationSeconds / 60) : 'Em andamento',
+      'Status': log.status,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Registro de Paradas');
+
+    const fileName = `Registro_Paradas_${format(new Date(), 'dd-MM-yyyy_HH-mm')}.xls`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
+  const clearFilters = () => {
+    setStartDate('');
+    setMachineFilter('');
+    setOperatorFilter('');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -49,6 +136,81 @@ const AuditPage = () => {
           <p className="text-gray-600 mt-1">
             Visualize e gerencie os registros de giros e paradas
           </p>
+        </div>
+
+        {/* Filtros */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Filter className="w-5 h-5 text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Filtros</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Data Início
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Máquina
+              </label>
+              <select
+                value={machineFilter}
+                onChange={(e) => setMachineFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Todas as máquinas</option>
+                {machines.map((machine) => (
+                  <option key={machine.id} value={machine.id}>
+                    {machine.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Operador
+              </label>
+              <select
+                value={operatorFilter}
+                onChange={(e) => setOperatorFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Todos os operadores</option>
+                {operators.map((operator) => (
+                  <option key={operator.id} value={operator.id}>
+                    {operator.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-end gap-2">
+              <button
+                onClick={clearFilters}
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Limpar
+              </button>
+              <button
+                onClick={activeTab === 'cycles' ? exportCyclesToExcel : exportStopsToExcel}
+                disabled={activeTab === 'cycles' ? cycleLogs.length === 0 : timeLogs.length === 0}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Exportar
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Tabs */}
