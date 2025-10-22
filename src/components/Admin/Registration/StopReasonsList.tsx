@@ -7,8 +7,11 @@ import StopReasonFormModal from './StopReasonFormModal';
 
 const StopReasonsList = () => {
   const company = useAuthStore((state) => state.company);
-  const stopReasons = useRegistrationStore((state) => state.getStopReasons(company?.id || ''));
+  const allStopReasons = useRegistrationStore((state) => state.getStopReasons(company?.id || ''));
   const deleteStopReason = useRegistrationStore((state) => state.deleteStopReason);
+
+  // Filtrar motivos do sistema (como "Turno Encerrado") que não devem aparecer na interface de cadastro
+  const stopReasons = allStopReasons.filter(reason => reason.name !== 'Turno Encerrado');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReason, setSelectedReason] = useState<StopReason | null>(null);
