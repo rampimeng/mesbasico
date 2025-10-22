@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ClipboardList, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useAuditStore } from '@/store/auditStore';
@@ -8,7 +8,7 @@ type TabType = 'cycles' | 'stops';
 
 const AuditPage = () => {
   const company = useAuthStore((state) => state.company);
-  const { getCycleLogs, getTimeLogs, deleteCycleLog, deleteTimeLog } = useAuditStore();
+  const { getCycleLogs, getTimeLogs, deleteCycleLog, deleteTimeLog, loadCycleLogs, loadTimeLogs, loading } = useAuditStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('cycles');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -16,14 +16,28 @@ const AuditPage = () => {
   const cycleLogs = getCycleLogs(company?.id || '');
   const timeLogs = getTimeLogs(company?.id || '');
 
-  const handleDeleteCycle = (id: string) => {
-    deleteCycleLog(id);
-    setDeleteConfirm(null);
+  // Carregar dados ao montar o componente
+  useEffect(() => {
+    loadCycleLogs();
+    loadTimeLogs();
+  }, [loadCycleLogs, loadTimeLogs]);
+
+  const handleDeleteCycle = async (id: string) => {
+    try {
+      await deleteCycleLog(id);
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error('Error deleting cycle log:', error);
+    }
   };
 
-  const handleDeleteStop = (id: string) => {
-    deleteTimeLog(id);
-    setDeleteConfirm(null);
+  const handleDeleteStop = async (id: string) => {
+    try {
+      await deleteTimeLog(id);
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error('Error deleting time log:', error);
+    }
   };
 
   return (
@@ -68,7 +82,12 @@ const AuditPage = () => {
         </div>
 
         {/* Content */}
-        {activeTab === 'cycles' ? (
+        {loading ? (
+          <div className="bg-white rounded-lg p-12 text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-500">Carregando registros...</p>
+          </div>
+        ) : activeTab === 'cycles' ? (
           <div className="space-y-4">
             {cycleLogs.length === 0 ? (
               <div className="bg-white rounded-lg p-12 text-center">

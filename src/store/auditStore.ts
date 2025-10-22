@@ -1,9 +1,16 @@
 import { create } from 'zustand';
-import { CycleLog, TimeLog, MatrixStatus } from '@/types';
+import { CycleLog, TimeLog } from '@/types';
+import { auditService } from '@/services/auditService';
 
 interface AuditStore {
   cycleLogs: CycleLog[];
   timeLogs: TimeLog[];
+  loading: boolean;
+  error: string | null;
+
+  // Load from API
+  loadCycleLogs: (filters?: any) => Promise<void>;
+  loadTimeLogs: (filters?: any) => Promise<void>;
 
   // Cycle Logs (Giros)
   addCycleLog: (log: Omit<CycleLog, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -13,7 +20,7 @@ interface AuditStore {
     machineId?: string;
     operatorId?: string;
   }) => CycleLog[];
-  deleteCycleLog: (id: string) => void;
+  deleteCycleLog: (id: string) => Promise<void>;
 
   // Time Logs (Paradas)
   addTimeLog: (log: Omit<TimeLog, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -23,66 +30,39 @@ interface AuditStore {
     machineId?: string;
     operatorId?: string;
   }) => TimeLog[];
-  deleteTimeLog: (id: string) => void;
+  deleteTimeLog: (id: string) => Promise<void>;
 
   // Stats
   getTodayCycles: (companyId: string, operatorId?: string) => number;
   getTodayCyclesByGroup: (companyId: string, groupId: string) => number;
 }
 
-// Mock data inicial
-const mockCycleLogs: CycleLog[] = [
-  {
-    id: 'cycle-1',
-    companyId: '1',
-    sessionId: 'session-1',
-    machineId: 'm1',
-    operatorId: '4',
-    cycleCompletedAt: new Date(new Date().setHours(8, 30, 0)),
-    machineName: 'Injetora 01',
-    operatorName: 'Operador João',
-    createdAt: new Date(new Date().setHours(8, 30, 0)),
-    updatedAt: new Date(new Date().setHours(8, 30, 0)),
-  },
-  {
-    id: 'cycle-2',
-    companyId: '1',
-    sessionId: 'session-1',
-    machineId: 'm1',
-    operatorId: '4',
-    cycleCompletedAt: new Date(new Date().setHours(9, 15, 0)),
-    machineName: 'Injetora 01',
-    operatorName: 'Operador João',
-    createdAt: new Date(new Date().setHours(9, 15, 0)),
-    updatedAt: new Date(new Date().setHours(9, 15, 0)),
-  },
-];
-
-const mockTimeLogs: TimeLog[] = [
-  {
-    id: 'time-1',
-    companyId: '1',
-    sessionId: 'session-1',
-    machineId: 'm1',
-    matrixId: 'm1-mat1',
-    status: MatrixStatus.STOPPED,
-    stopReasonId: 'r1',
-    stopReasonName: 'Troca de Matriz',
-    startedAt: new Date(new Date().setHours(10, 0, 0)),
-    endedAt: new Date(new Date().setHours(10, 15, 0)),
-    durationSeconds: 900,
-    machineName: 'Injetora 01',
-    matrixNumber: 1,
-    operatorId: '4',
-    operatorName: 'Operador João',
-    createdAt: new Date(new Date().setHours(10, 0, 0)),
-    updatedAt: new Date(new Date().setHours(10, 15, 0)),
-  },
-];
-
 export const useAuditStore = create<AuditStore>((set, get) => ({
-  cycleLogs: mockCycleLogs,
-  timeLogs: mockTimeLogs,
+  cycleLogs: [],
+  timeLogs: [],
+  loading: false,
+  error: null,
+
+  // Load from API
+  loadCycleLogs: async (filters) => {
+    try {
+      set({ loading: true, error: null });
+      const data = await auditService.getCycleLogs(filters);
+      set({ cycleLogs: data, loading: false });
+    } catch (error: any) {
+      set({ error: error.message, loading: false });
+    }
+  },
+
+  loadTimeLogs: async (filters) => {
+    try {
+      set({ loading: true, error: null });
+      const data = await auditService.getTimeLogs(filters);
+      set({ timeLogs: data, loading: false });
+    } catch (error: any) {
+      set({ error: error.message, loading: false });
+    }
+  },
 
   // Cycle Logs
   addCycleLog: (log) => {
@@ -116,10 +96,16 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
     return logs.sort((a, b) => new Date(b.cycleCompletedAt).getTime() - new Date(a.cycleCompletedAt).getTime());
   },
 
-  deleteCycleLog: (id) => {
-    set((state) => ({
-      cycleLogs: state.cycleLogs.filter((log) => log.id !== id),
-    }));
+  deleteCycleLog: async (id) => {
+    try {
+      await auditService.deleteCycleLog(id);
+      set((state) => ({
+        cycleLogs: state.cycleLogs.filter((log) => log.id !== id),
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
   },
 
   // Time Logs
@@ -154,10 +140,16 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
     return logs.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
   },
 
-  deleteTimeLog: (id) => {
-    set((state) => ({
-      timeLogs: state.timeLogs.filter((log) => log.id !== id),
-    }));
+  deleteTimeLog: async (id) => {
+    try {
+      await auditService.deleteTimeLog(id);
+      set((state) => ({
+        timeLogs: state.timeLogs.filter((log) => log.id !== id),
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
   },
 
   // Stats
