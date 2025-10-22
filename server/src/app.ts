@@ -30,7 +30,7 @@ app.get('/health', (_req, res) => {
 app.get('/', (_req, res) => {
   res.status(200).json({
     success: true,
-    message: 'MES SaaS API',
+    message: 'CORTEXON API',
     version: '1.0.0',
     endpoints: {
       health: '/health',

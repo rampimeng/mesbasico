@@ -17,7 +17,7 @@ const router = Router();
 router.get('/health', (_req, res) => {
   res.json({
     success: true,
-    message: 'MES SaaS API is running',
+    message: 'CORTEXON API is running',
     timestamp: new Date().toISOString(),
   });
 });

@@ -64,7 +64,7 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
           <div className="flex items-center justify-between">
             {isOpen && (
               <div>
-                <h2 className="text-xl font-bold">MES SaaS</h2>
+                <h2 className="text-xl font-bold">CORTEXON</h2>
                 <p className="text-primary-200 text-xs">Sistema de Produção</p>
               </div>
             )}
