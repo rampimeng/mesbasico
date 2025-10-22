@@ -26,7 +26,8 @@
       "Bash(powershell -Command \"Stop-Process -Id 24704 -Force\")",
       "Bash(npx serve -s . -l 3000)",
       "Bash(git restore:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(incompatible types: text and uuid\"\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
