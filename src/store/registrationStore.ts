@@ -1,12 +1,13 @@
 import { create } from 'zustand';
-import { User, Group, Machine, StopReason } from '@/types';
-import { groupsService, machinesService, stopReasonsService, usersService } from '@/services/registrationService';
+import { User, Group, Machine, StopReason, Shift } from '@/types';
+import { groupsService, machinesService, stopReasonsService, usersService, shiftsService } from '@/services/registrationService';
 
 interface RegistrationStore {
   // Estados
   operators: User[];
   groups: Group[];
   machines: Machine[];
+  shifts: Shift[];
   stopReasons: StopReason[];
   loading: boolean;
   error: string | null;
@@ -14,6 +15,7 @@ interface RegistrationStore {
   // Load data from API
   loadGroups: () => Promise<void>;
   loadMachines: () => Promise<void>;
+  loadShifts: () => Promise<void>;
   loadStopReasons: () => Promise<void>;
   loadOperators: () => Promise<void>;
   loadAll: () => Promise<void>;
@@ -29,6 +31,12 @@ interface RegistrationStore {
   addMachine: (machine: any) => Promise<void>;
   updateMachine: (id: string, machine: any) => Promise<void>;
   deleteMachine: (id: string) => Promise<void>;
+
+  // Turnos
+  getShifts: (companyId: string) => Shift[];
+  addShift: (shift: any) => Promise<void>;
+  updateShift: (id: string, shift: any) => Promise<void>;
+  deleteShift: (id: string) => Promise<void>;
 
   // Motivos de Parada
   getStopReasons: (companyId: string) => StopReason[];
@@ -47,6 +55,7 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
   operators: [],
   groups: [],
   machines: [],
+  shifts: [],
   stopReasons: [],
   loading: false,
   error: null,
@@ -93,10 +102,21 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
     }
   },
 
+  loadShifts: async () => {
+    try {
+      set({ loading: true, error: null });
+      const shifts = await shiftsService.getAll();
+      set({ shifts, loading: false });
+    } catch (error: any) {
+      set({ error: error.message, loading: false });
+    }
+  },
+
   loadAll: async () => {
     await Promise.all([
       get().loadGroups(),
       get().loadMachines(),
+      get().loadShifts(),
       get().loadStopReasons(),
       get().loadOperators(),
     ]);
@@ -169,6 +189,43 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
       await machinesService.delete(id);
       set((state) => ({
         machines: state.machines.filter((m) => m.id !== id),
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  // Turnos
+  getShifts: (companyId) => get().shifts.filter((s) => s.companyId === companyId),
+
+  addShift: async (shift) => {
+    try {
+      const newShift = await shiftsService.create(shift);
+      set((state) => ({ shifts: [...state.shifts, newShift] }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  updateShift: async (id, shift) => {
+    try {
+      const updated = await shiftsService.update(id, shift);
+      set((state) => ({
+        shifts: state.shifts.map((s) => (s.id === id ? updated : s)),
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  deleteShift: async (id) => {
+    try {
+      await shiftsService.delete(id);
+      set((state) => ({
+        shifts: state.shifts.filter((s) => s.id !== id),
       }));
     } catch (error: any) {
       set({ error: error.message });

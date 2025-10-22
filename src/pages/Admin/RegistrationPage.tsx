@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Users, Factory, Grid3x3, AlertTriangle } from 'lucide-react';
+import { Users, Factory, Grid3x3, AlertTriangle, Clock } from 'lucide-react';
 import { useRegistrationStore } from '@/store/registrationStore';
 import { useAuthStore } from '@/store/authStore';
 import OperatorsList from '@/components/Admin/Registration/OperatorsList';
 import MachinesList from '@/components/Admin/Registration/MachinesList';
 import GroupsList from '@/components/Admin/Registration/GroupsList';
+import ShiftsList from '@/components/Admin/Registration/ShiftsList';
 import StopReasonsList from '@/components/Admin/Registration/StopReasonsList';
 
-type TabType = 'operators' | 'machines' | 'groups' | 'stopReasons';
+type TabType = 'operators' | 'machines' | 'groups' | 'shifts' | 'stopReasons';
 
 const RegistrationPage = () => {
   const [activeTab, setActiveTab] = useState<TabType>('operators');
@@ -42,6 +43,12 @@ const RegistrationPage = () => {
       component: GroupsList,
     },
     {
+      id: 'shifts' as TabType,
+      label: 'Turnos',
+      icon: Clock,
+      component: ShiftsList,
+    },
+    {
       id: 'stopReasons' as TabType,
       label: 'Motivos de Parada',
       icon: AlertTriangle,
@@ -58,7 +65,7 @@ const RegistrationPage = () => {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Cadastros</h1>
           <p className="text-gray-600 mt-1">
-            Gerencie operadores, máquinas, células e motivos de parada
+            Gerencie operadores, máquinas, células, turnos e motivos de parada
           </p>
         </div>
 

@@ -31,11 +31,34 @@ model Company {
   users       User[]
   groups      Group[]
   machines    Machine[]
+  shifts      Shift[]
   stopReasons StopReason[]
   auditLogs   AuditLog[]
   pdcaPlans   PdcaPlan[]
 
   @@map("companies")
+}
+
+// ============================================
+// TURNOS
+// ============================================
+
+model Shift {
+  id          String   @id @default(uuid())
+  companyId   String
+  name        String   // Ex: "Turno 1", "Manhã", "Noite"
+  startTime   String   // Formato: "HH:mm" (ex: "08:00")
+  lunchTime   String   // Formato: "HH:mm" (ex: "01:00")
+  endTime     String   // Formato: "HH:mm" (ex: "17:00")
+  totalHours  String   // Calculado: endTime - startTime - lunchTime (ex: "08:00")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relações
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("shifts")
 }
 
 // ============================================

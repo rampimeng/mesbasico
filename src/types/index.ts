@@ -84,6 +84,18 @@ export interface Matrix {
   updatedAt: Date;
 }
 
+export interface Shift {
+  id: string;
+  companyId: string;
+  name: string;
+  startTime: string; // Formato: "HH:mm"
+  lunchTime: string; // Formato: "HH:mm"
+  endTime: string; // Formato: "HH:mm"
+  totalHours: string; // Calculado: "HH:mm"
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface StopReason {
   id: string;
   companyId: string;

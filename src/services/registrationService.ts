@@ -192,3 +192,46 @@ export const usersService = {
     return data.data;
   },
 };
+
+// Shifts
+export const shiftsService = {
+  async getAll() {
+    const response = await fetch(`${API_URL}/shifts`, {
+      headers: getAuthHeader(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+    return data.data;
+  },
+
+  async create(shift: any) {
+    const response = await fetch(`${API_URL}/shifts`, {
+      method: 'POST',
+      headers: getAuthHeader(),
+      body: JSON.stringify(shift),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+    return data.data;
+  },
+
+  async update(id: string, shift: any) {
+    const response = await fetch(`${API_URL}/shifts/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeader(),
+      body: JSON.stringify(shift),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+    return data.data;
+  },
+
+  async delete(id: string) {
+    const response = await fetch(`${API_URL}/shifts/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeader(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+  },
+};
