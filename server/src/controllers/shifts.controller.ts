@@ -85,6 +85,8 @@ export const createShift = async (req: Request, res: Response) => {
         lunchTime,
         endTime,
         totalHours,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       })
       .select()
       .single();
