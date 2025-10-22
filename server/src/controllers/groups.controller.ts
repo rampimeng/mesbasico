@@ -29,6 +29,7 @@ export const getAllGroups = async (req: Request, res: Response) => {
 
         return {
           ...group,
+          cyclesPerShift: group.expectedCyclesPerShift, // Map to frontend property name
           operatorIds: operatorLinks?.map((link: any) => link.userId) || [],
         };
       })
@@ -130,6 +131,7 @@ export const createGroup = async (req: Request, res: Response) => {
     // Add operatorIds to the response
     const groupWithOperators = {
       ...group,
+      cyclesPerShift: group.expectedCyclesPerShift, // Map to frontend property name
       operatorIds,
     };
 
@@ -204,6 +206,7 @@ export const updateGroup = async (req: Request, res: Response) => {
     // Add operatorIds to the response
     const groupWithOperators = {
       ...group,
+      cyclesPerShift: group.expectedCyclesPerShift, // Map to frontend property name
       operatorIds: operatorIds || [],
     };
 
