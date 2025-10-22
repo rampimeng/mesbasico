@@ -8,7 +8,10 @@ export const getAllGroups = async (req: Request, res: Response) => {
 
     const { data: groups, error } = await supabase
       .from('groups')
-      .select('*')
+      .select(`
+        *,
+        shift:shifts(id, name, totalHours)
+      `)
       .eq('companyId', companyId)
       .order('createdAt', { ascending: false });
 
@@ -83,7 +86,7 @@ export const getGroupById = async (req: Request, res: Response) => {
 export const createGroup = async (req: Request, res: Response) => {
   try {
     const { companyId } = req.user!;
-    const { name, description, cyclesPerShift, operatorIds = [] } = req.body;
+    const { name, description, cyclesPerShift, shiftId, operatorIds = [] } = req.body;
 
     if (!name) {
       return res.status(400).json({
@@ -99,6 +102,7 @@ export const createGroup = async (req: Request, res: Response) => {
         companyId,
         name,
         description: description || null,
+        shiftId: shiftId || null,
         expectedCyclesPerShift: cyclesPerShift || 0,
       })
       .select()
@@ -153,7 +157,7 @@ export const updateGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { companyId } = req.user!;
-    const { name, description, cyclesPerShift, operatorIds } = req.body;
+    const { name, description, cyclesPerShift, shiftId, operatorIds } = req.body;
 
     const updateData: any = {
       updatedAt: new Date().toISOString(),
@@ -162,6 +166,7 @@ export const updateGroup = async (req: Request, res: Response) => {
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (cyclesPerShift !== undefined) updateData.expectedCyclesPerShift = cyclesPerShift;
+    if (shiftId !== undefined) updateData.shiftId = shiftId;
 
     const { data: group, error } = await supabase
       .from('groups')

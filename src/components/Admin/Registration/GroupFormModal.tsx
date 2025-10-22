@@ -14,12 +14,15 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
   const addGroup = useRegistrationStore((state) => state.addGroup);
   const updateGroup = useRegistrationStore((state) => state.updateGroup);
   const getOperators = useRegistrationStore((state) => state.getOperators);
+  const getShifts = useRegistrationStore((state) => state.getShifts);
 
   const operators = getOperators(company?.id || '');
+  const shifts = getShifts(company?.id || '');
 
   const [formData, setFormData] = useState({
     name: group?.name || '',
     description: group?.description || '',
+    shiftId: group?.shiftId || '',
     cyclesPerShift: group?.cyclesPerShift || 0,
     operatorIds: group?.operatorIds || [],
   });
@@ -31,6 +34,7 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
       setFormData({
         name: group.name,
         description: group.description || '',
+        shiftId: group.shiftId || '',
         cyclesPerShift: group.cyclesPerShift || 0,
         operatorIds: group.operatorIds || [],
       });
@@ -121,6 +125,28 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
               placeholder="Descrição opcional da célula"
               rows={3}
             />
+          </div>
+
+          {/* Turno */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Turno de Trabalho
+            </label>
+            <select
+              value={formData.shiftId}
+              onChange={(e) => setFormData({ ...formData, shiftId: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Nenhum turno selecionado</option>
+              {shifts.map((shift) => (
+                <option key={shift.id} value={shift.id}>
+                  {shift.name} ({shift.totalHours} horas)
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-sm text-gray-500">
+              Vincule esta célula a um turno específico (opcional)
+            </p>
           </div>
 
           {/* Giros por Turno */}

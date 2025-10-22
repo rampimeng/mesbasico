@@ -52,6 +52,12 @@ export interface Group {
   companyId: string;
   name: string;
   description?: string;
+  shiftId?: string; // Turno vinculado à célula
+  shift?: { // Dados do turno (quando carregado com join)
+    id: string;
+    name: string;
+    totalHours: string;
+  };
   cyclesPerShift?: number; // Giros esperados por turno
   operatorIds: string[]; // Operadores vinculados a esta célula
   createdAt: Date;

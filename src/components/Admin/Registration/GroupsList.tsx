@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Clock } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useRegistrationStore } from '@/store/registrationStore';
 import { Group } from '@/types';
@@ -68,9 +68,22 @@ const GroupsList = () => {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900">{group.name}</h3>
+                  <div className="flex items-center gap-3 flex-wrap mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">{group.name}</h3>
+                    {group.shift && (
+                      <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                        <Clock className="w-3 h-3" />
+                        {group.shift.name} ({group.shift.totalHours}h)
+                      </span>
+                    )}
+                    {group.cyclesPerShift && group.cyclesPerShift > 0 && (
+                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                        {group.cyclesPerShift} giros/turno
+                      </span>
+                    )}
+                  </div>
                   {group.description && (
-                    <p className="mt-1 text-sm text-gray-600">{group.description}</p>
+                    <p className="text-sm text-gray-600">{group.description}</p>
                   )}
                 </div>
 

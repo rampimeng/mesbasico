@@ -56,6 +56,7 @@ model Shift {
 
   // Relações
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  groups  Group[]
 
   @@index([companyId])
   @@map("shifts")
@@ -105,16 +106,19 @@ model Group {
   companyId              String
   name                   String
   description            String?
+  shiftId                String?
   expectedCyclesPerShift Int      @default(0)
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
   // Relações
   company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  shift          Shift?          @relation(fields: [shiftId], references: [id], onDelete: SetNull)
   machines       Machine[]
   operatorGroups OperatorGroup[]
 
   @@index([companyId])
+  @@index([shiftId])
   @@map("groups")
 }
 
