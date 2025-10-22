@@ -25,7 +25,8 @@
       "Bash(npx tsc:*)",
       "Bash(powershell -Command \"Stop-Process -Id 24704 -Force\")",
       "Bash(npx serve -s . -l 3000)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []

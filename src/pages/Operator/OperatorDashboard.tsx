@@ -6,6 +6,7 @@ import { useRegistrationStore } from '@/store/registrationStore';
 import { MachineStatus } from '@/types';
 import MachineCard from '@/components/Operator/MachineCard';
 import EmergencyModal from '@/components/Operator/EmergencyModal';
+import ConfirmEndShiftModal from '@/components/Operator/ConfirmEndShiftModal';
 import { AlertTriangle, LogOut, Play, RefreshCw, Clock, Maximize, Minimize } from 'lucide-react';
 import { productionService } from '@/services/productionService';
 
@@ -16,6 +17,7 @@ const OperatorDashboard = () => {
   const { loadStopReasons } = useRegistrationStore();
 
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [showConfirmEndShiftModal, setShowConfirmEndShiftModal] = useState(false);
   const [blockedMessage, setBlockedMessage] = useState('');
   const [todayCycles, setTodayCycles] = useState(getTodayCycles(company?.id || '', user?.id));
 
@@ -209,6 +211,10 @@ const OperatorDashboard = () => {
       const data = await productionService.getTodayShiftStart();
       if (data.shiftStartTime) {
         setShiftStartTime(new Date(data.shiftStartTime));
+        console.log('✅ Shift start time loaded:', data.shiftStartTime);
+      } else {
+        setShiftStartTime(null);
+        console.log('ℹ️ No active shift found');
       }
     } catch (error) {
       console.error('❌ Error loading shift start time:', error);
@@ -419,6 +425,30 @@ const OperatorDashboard = () => {
     }
   };
 
+  // Lógica para lidar com o logout
+  const handleLogoutClick = () => {
+    // Se o turno está ativo, mostrar modal de confirmação
+    if (shiftIsActive) {
+      setShowConfirmEndShiftModal(true);
+    } else {
+      // Se não há turno ativo, fazer logout direto
+      logout();
+    }
+  };
+
+  // Logout direto sem encerrar turno
+  const handleLogoutWithoutEndShift = () => {
+    setShowConfirmEndShiftModal(false);
+    logout();
+  };
+
+  // Encerrar turno e fazer logout
+  const handleEndShiftAndLogout = async () => {
+    setShowConfirmEndShiftModal(false);
+    await handleEndShift();
+    logout();
+  };
+
   // Alguma máquina está ativa (não IDLE e não STOPPED)?
   const anyMachineActive = machines.some(
     (m) => m.status !== MachineStatus.IDLE && m.status !== MachineStatus.STOPPED
@@ -504,7 +534,7 @@ const OperatorDashboard = () => {
                 <span className="hidden sm:inline">Atualizar</span>
               </button>
               <button
-                onClick={logout}
+                onClick={handleLogoutClick}
                 className="btn-secondary flex items-center gap-2"
               >
                 <LogOut className="w-5 h-5" />
@@ -598,6 +628,15 @@ const OperatorDashboard = () => {
         <EmergencyModal
           onClose={() => setShowEmergencyModal(false)}
           onConfirm={handlePauseAllConfirm}
+        />
+      )}
+
+      {/* Confirm End Shift Modal */}
+      {showConfirmEndShiftModal && (
+        <ConfirmEndShiftModal
+          onClose={() => setShowConfirmEndShiftModal(false)}
+          onConfirmEndShift={handleEndShiftAndLogout}
+          onLogoutWithoutEndShift={handleLogoutWithoutEndShift}
         />
       )}
 
