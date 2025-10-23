@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Company } from '@/types';
-import { Building2, Plus, Edit, Power, Key, Shield, LogIn, Image, Save, CheckCircle, XCircle } from 'lucide-react';
+import { Building2, Plus, Edit, Power, Key, Shield, LogIn, Image, CheckCircle, XCircle } from 'lucide-react';
 import CompanyFormModal from '@/components/Master/CompanyFormModal';
 import ChangePasswordModal from '@/components/Master/ChangePasswordModal';
 import { companiesService } from '@/services/companiesService';
@@ -15,12 +16,13 @@ interface ExtendedCompany extends Company {
 }
 
 const MasterDashboard = () => {
-  const { user, logout, appLogoUrl, setAppLogoUrl } = useAuthStore();
+  const navigate = useNavigate();
+  const { user, logout, appLogoUrl } = useAuthStore();
 
-  const [appLogo, setAppLogo] = useState(appLogoUrl);
   const [companies, setCompanies] = useState<ExtendedCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
 
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -163,9 +165,13 @@ const MasterDashboard = () => {
     window.location.href = '/admin';
   };
 
-  const handleSaveAppLogo = () => {
-    setAppLogoUrl(appLogo);
-    alert('Logotipo do aplicativo salvo com sucesso!');
+  // Filtrar empresas com base na seleção
+  const filteredCompanies = showInactive
+    ? companies
+    : companies.filter((c) => c.active);
+
+  const handleNavigateToAppLogo = () => {
+    navigate('/master/app-logo');
   };
 
   return (
@@ -189,6 +195,13 @@ const MasterDashboard = () => {
             </div>
 
             <div className="flex items-center gap-4">
+              <button
+                onClick={handleNavigateToAppLogo}
+                className="btn-secondary flex items-center gap-2"
+              >
+                <Image className="w-5 h-5" />
+                Logotipo do App
+              </button>
               <div className="text-right">
                 <p className="text-sm text-gray-600">Logado como</p>
                 <p className="font-semibold text-gray-900">{user?.name}</p>
@@ -203,56 +216,6 @@ const MasterDashboard = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* App Logo Configuration */}
-        <div className="card bg-white mb-8">
-          <div className="flex items-center gap-3 mb-6">
-            <Image className="w-6 h-6 text-primary-600" />
-            <h2 className="text-2xl font-bold text-gray-900">Logotipo do Aplicativo</h2>
-          </div>
-          <p className="text-gray-600 mb-4">
-            Configure o logotipo que aparecerá na tela de login e no header do painel Master
-          </p>
-
-          <div className="space-y-4">
-            <div>
-              <label className="label">URL do Logotipo do Aplicativo</label>
-              <div className="flex gap-3">
-                <input
-                  type="url"
-                  value={appLogo}
-                  onChange={(e) => setAppLogo(e.target.value)}
-                  className="input flex-1"
-                  placeholder="https://exemplo.com/logo-app.png"
-                />
-                <button
-                  onClick={handleSaveAppLogo}
-                  className="btn-primary flex items-center gap-2 whitespace-nowrap"
-                >
-                  <Save className="w-5 h-5" />
-                  Salvar
-                </button>
-              </div>
-              <p className="text-gray-500 text-xs mt-1">
-                Este logotipo será exibido na tela de login de todas as empresas e no header do Master
-              </p>
-            </div>
-
-            {appLogo && (
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600 mb-2">Preview do Logotipo:</p>
-                <img
-                  src={appLogo}
-                  alt="Logo preview"
-                  className="h-16 object-contain"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
@@ -301,10 +264,21 @@ const MasterDashboard = () => {
         <div className="card bg-white">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Empresas Cadastradas</h2>
-            <button onClick={handleNewCompany} className="btn-primary flex items-center gap-2">
-              <Plus className="w-5 h-5" />
-              Nova Empresa
-            </button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Mostrar inativas:</label>
+                <input
+                  type="checkbox"
+                  checked={showInactive}
+                  onChange={(e) => setShowInactive(e.target.checked)}
+                  className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+              </div>
+              <button onClick={handleNewCompany} className="btn-primary flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                Nova Empresa
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -313,7 +287,7 @@ const MasterDashboard = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {companies.map((company) => (
+              {filteredCompanies.map((company) => (
                 <div
                   key={company.id}
                   className={`p-6 rounded-xl border-2 transition-all ${
@@ -447,11 +421,17 @@ const MasterDashboard = () => {
             </div>
           )}
 
-          {!loading && companies.length === 0 && (
+          {!loading && filteredCompanies.length === 0 && (
             <div className="text-center py-12">
               <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">Nenhuma empresa cadastrada</p>
-              <p className="text-gray-400 mt-2">Clique em "Nova Empresa" para começar</p>
+              <p className="text-gray-500 text-lg">
+                {showInactive ? 'Nenhuma empresa cadastrada' : 'Nenhuma empresa ativa'}
+              </p>
+              <p className="text-gray-400 mt-2">
+                {showInactive
+                  ? 'Clique em "Nova Empresa" para começar'
+                  : 'Marque "Mostrar inativas" para ver empresas desativadas'}
+              </p>
             </div>
           )}
         </div>

@@ -1,33 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install)",
       "Bash(npm run build:*)",
-      "Bash(git commit:*)",
-      "Bash(git add:*)",
-      "Bash(git remote add:*)",
-      "Bash(git push:*)",
-      "Bash(npm init:*)",
-      "Bash(npm install:*)",
-      "Bash(npm run prisma:generate:*)",
-      "Bash(npm run prisma:migrate:*)",
-      "Bash(npx prisma db pull:*)",
-      "Bash(npm run dev:*)",
-      "Bash(curl:*)",
-      "Bash(npm run seed:supabase:*)",
-      "Bash(netstat:*)",
-      "Bash(findstr:*)",
-      "Bash(taskkill:*)",
-      "Bash(tasklist:*)",
-      "Bash(powershell -Command \"Stop-Process -Id 5420,34592 -Force\")",
-      "Bash(npx ts-node:*)",
-      "Bash(npm run verify-master-password:*)",
-      "Bash(npx tsc:*)",
-      "Bash(powershell -Command \"Stop-Process -Id 24704 -Force\")",
-      "Bash(npx serve -s . -l 3000)",
-      "Bash(git restore:*)",
-      "Bash(npm uninstall:*)",
-      "Bash(incompatible types: text and uuid\"\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

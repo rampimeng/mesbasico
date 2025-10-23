@@ -6,6 +6,7 @@ import { UserRole } from '@/types';
 // Pages
 import LoginPage from '@/pages/LoginPage';
 import MasterDashboard from '@/pages/Master/MasterDashboard';
+import AppLogoSettings from '@/pages/Master/AppLogoSettings';
 import AdminDashboard from '@/pages/Admin/AdminDashboard';
 import SupervisorDashboard from '@/pages/Supervisor/SupervisorDashboard';
 import OperatorDashboard from '@/pages/Operator/OperatorDashboard';
@@ -28,14 +29,24 @@ function App() {
       {/* Rota pública para Dashboard de Controle */}
       <Route path="/control/:token" element={<ControlDashboard />} />
 
-      <Route
-        path="/master/*"
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.MASTER]}>
-            <MasterDashboard />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/master">
+        <Route
+          index
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.MASTER]}>
+              <MasterDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="app-logo"
+          element={
+            <ProtectedRoute allowedRoles={[UserRole.MASTER]}>
+              <AppLogoSettings />
+            </ProtectedRoute>
+          }
+        />
+      </Route>
 
       <Route
         path="/admin/*"

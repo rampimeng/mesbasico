@@ -149,10 +149,23 @@ export const createGroup = async (req: Request, res: Response) => {
       }
     }
 
-    // Add operatorIds to the response
+    // Fetch shift data if shiftId is present
+    let shiftData = null;
+    if (group.shiftId) {
+      const { data: shift } = await supabase
+        .from('shifts')
+        .select('id, name, totalHours')
+        .eq('id', group.shiftId)
+        .single();
+
+      shiftData = shift;
+    }
+
+    // Add operatorIds and shift to the response
     const groupWithOperators = {
       ...group,
       cyclesPerShift: group.expectedCyclesPerShift, // Map to frontend property name
+      shift: shiftData,
       operatorIds,
     };
 
@@ -176,6 +189,8 @@ export const updateGroup = async (req: Request, res: Response) => {
     const { companyId } = req.user!;
     const { name, description, cyclesPerShift, shiftId, operatorIds } = req.body;
 
+    console.log('🔄 Updating group:', id, 'with data:', { name, description, cyclesPerShift, shiftId, operatorIds });
+
     const updateData: any = {
       updatedAt: new Date().toISOString(),
     };
@@ -183,7 +198,9 @@ export const updateGroup = async (req: Request, res: Response) => {
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (cyclesPerShift !== undefined) updateData.expectedCyclesPerShift = cyclesPerShift;
-    if (shiftId !== undefined) updateData.shiftId = shiftId;
+    if (shiftId !== undefined) updateData.shiftId = shiftId === '' ? null : shiftId; // Convert empty string to null
+
+    console.log('📝 Update data being sent:', updateData);
 
     const { data: group, error } = await supabase
       .from('groups')
@@ -194,11 +211,14 @@ export const updateGroup = async (req: Request, res: Response) => {
       .single();
 
     if (error) {
+      console.error('❌ Error updating group:', error);
       return res.status(400).json({
         success: false,
         error: error.message,
       });
     }
+
+    console.log('✅ Group updated successfully:', group);
 
     // Update operator links if operatorIds was provided
     if (operatorIds !== undefined) {
@@ -225,12 +245,27 @@ export const updateGroup = async (req: Request, res: Response) => {
       }
     }
 
-    // Add operatorIds to the response
+    // Fetch shift data if shiftId is present
+    let shiftData = null;
+    if (group.shiftId) {
+      const { data: shift } = await supabase
+        .from('shifts')
+        .select('id, name, totalHours')
+        .eq('id', group.shiftId)
+        .single();
+
+      shiftData = shift;
+    }
+
+    // Add operatorIds and shift to the response
     const groupWithOperators = {
       ...group,
       cyclesPerShift: group.expectedCyclesPerShift, // Map to frontend property name
+      shift: shiftData,
       operatorIds: operatorIds || [],
     };
+
+    console.log('📤 Sending response:', groupWithOperators);
 
     res.json({
       success: true,
