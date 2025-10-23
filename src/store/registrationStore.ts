@@ -129,6 +129,11 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
     try {
       const newGroup = await groupsService.create(group);
       set((state) => ({ groups: [...state.groups, newGroup] }));
+
+      // Recarregar operadores para atualizar groupIds
+      if (newGroup.operatorIds && newGroup.operatorIds.length > 0) {
+        await get().loadOperators();
+      }
     } catch (error: any) {
       set({ error: error.message });
       throw error;
@@ -141,6 +146,10 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
       set((state) => ({
         groups: state.groups.map((g) => (g.id === id ? updated : g)),
       }));
+
+      // Recarregar operadores para atualizar groupIds
+      // (necessário quando operatorIds são alterados)
+      await get().loadOperators();
     } catch (error: any) {
       set({ error: error.message });
       throw error;
@@ -153,6 +162,9 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
       set((state) => ({
         groups: state.groups.filter((g) => g.id !== id),
       }));
+
+      // Recarregar operadores para limpar groupIds desvinculados
+      await get().loadOperators();
     } catch (error: any) {
       set({ error: error.message });
       throw error;
