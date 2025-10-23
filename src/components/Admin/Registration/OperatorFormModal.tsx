@@ -59,28 +59,34 @@ const OperatorFormModal = ({ operator, onClose }: OperatorFormModalProps) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm() || !company) return;
 
-    if (operator) {
-      // Atualizar
-      updateOperator(operator.id, {
-        ...formData,
-        password: formData.password || operator.password,
-      });
-    } else {
-      // Adicionar novo
-      addOperator({
-        companyId: company.id,
-        role: UserRole.OPERATOR,
-        mfaEnabled: false,
-        ...formData,
-      });
-    }
+    try {
+      if (operator) {
+        // Atualizar
+        await updateOperator(operator.id, {
+          ...formData,
+          password: formData.password || operator.password,
+        });
+      } else {
+        // Adicionar novo
+        await addOperator({
+          companyId: company.id,
+          role: UserRole.OPERATOR,
+          mfaEnabled: false,
+          ...formData,
+        });
+      }
 
-    onClose();
+      // Só fecha o modal após a operação completar com sucesso
+      onClose();
+    } catch (error: any) {
+      // Exibir erro para o usuário
+      setErrors({ submit: error.message || 'Erro ao salvar operador. Tente novamente.' });
+    }
   };
 
   const formatPhone = (value: string) => {
@@ -109,6 +115,13 @@ const OperatorFormModal = ({ operator, onClose }: OperatorFormModalProps) => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Error Message */}
+          {errors.submit && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{errors.submit}</p>
+            </div>
+          )}
+
           {/* Nome */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
