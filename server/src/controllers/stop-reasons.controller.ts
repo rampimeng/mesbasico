@@ -19,9 +19,15 @@ export const getAllStopReasons = async (req: Request, res: Response) => {
       });
     }
 
+    // Mapear excludeFromPareto (DB) para ignoreInPareto (frontend)
+    const mappedStopReasons = stopReasons?.map(reason => ({
+      ...reason,
+      ignoreInPareto: reason.excludeFromPareto,
+    }));
+
     res.json({
       success: true,
-      data: stopReasons,
+      data: mappedStopReasons,
     });
   } catch (error: any) {
     res.status(500).json({
@@ -51,9 +57,15 @@ export const getStopReasonById = async (req: Request, res: Response) => {
       });
     }
 
+    // Mapear excludeFromPareto (DB) para ignoreInPareto (frontend)
+    const mappedStopReason = {
+      ...stopReason,
+      ignoreInPareto: stopReason.excludeFromPareto,
+    };
+
     res.json({
       success: true,
-      data: stopReason,
+      data: mappedStopReason,
     });
   } catch (error: any) {
     res.status(500).json({
@@ -84,7 +96,7 @@ export const createStopReason = async (req: Request, res: Response) => {
       name,
       description: description || null,
       category: category || null,
-      ignoreInPareto: ignoreInPareto || false,
+      excludeFromPareto: ignoreInPareto || false, // Mapeamento: frontend usa ignoreInPareto, DB usa excludeFromPareto
     };
 
     console.log('📦 Stop reason data to insert:', stopReasonData);
@@ -105,9 +117,15 @@ export const createStopReason = async (req: Request, res: Response) => {
 
     console.log('✅ Stop reason created successfully:', stopReason);
 
+    // Mapear excludeFromPareto (DB) para ignoreInPareto (frontend)
+    const mappedStopReason = {
+      ...stopReason,
+      ignoreInPareto: stopReason.excludeFromPareto,
+    };
+
     res.status(201).json({
       success: true,
-      data: stopReason,
+      data: mappedStopReason,
       message: 'Stop reason created successfully',
     });
   } catch (error: any) {
@@ -133,7 +151,7 @@ export const updateStopReason = async (req: Request, res: Response) => {
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (category !== undefined) updateData.category = category;
-    if (ignoreInPareto !== undefined) updateData.ignoreInPareto = ignoreInPareto;
+    if (ignoreInPareto !== undefined) updateData.excludeFromPareto = ignoreInPareto; // Mapeamento: frontend usa ignoreInPareto, DB usa excludeFromPareto
 
     const { data: stopReason, error } = await supabase
       .from('stop_reasons')
@@ -150,9 +168,15 @@ export const updateStopReason = async (req: Request, res: Response) => {
       });
     }
 
+    // Mapear excludeFromPareto (DB) para ignoreInPareto (frontend)
+    const mappedStopReason = {
+      ...stopReason,
+      ignoreInPareto: stopReason.excludeFromPareto,
+    };
+
     res.json({
       success: true,
-      data: stopReason,
+      data: mappedStopReason,
       message: 'Stop reason updated successfully',
     });
   } catch (error: any) {
