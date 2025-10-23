@@ -105,7 +105,10 @@ export const createGroup = async (req: Request, res: Response) => {
     const { companyId } = req.user!;
     const { name, description, cyclesPerShift, shiftId, operatorIds = [] } = req.body;
 
+    console.log('📝 Creating group with data:', { companyId, name, description, cyclesPerShift, shiftId, operatorIds });
+
     if (!name) {
+      console.log('❌ Validation failed: missing name');
       return res.status(400).json({
         success: false,
         error: 'Group name is required',
@@ -113,24 +116,31 @@ export const createGroup = async (req: Request, res: Response) => {
     }
 
     // Create the group
+    const groupData = {
+      companyId,
+      name,
+      description: description || null,
+      shiftId: shiftId && shiftId.trim() !== '' ? shiftId : null, // Converte string vazia para null
+      expectedCyclesPerShift: cyclesPerShift || 0,
+    };
+
+    console.log('📦 Group data to insert:', groupData);
+
     const { data: group, error } = await supabase
       .from('groups')
-      .insert({
-        companyId,
-        name,
-        description: description || null,
-        shiftId: shiftId || null,
-        expectedCyclesPerShift: cyclesPerShift || 0,
-      })
+      .insert(groupData)
       .select()
       .single();
 
     if (error) {
+      console.error('❌ Supabase error creating group:', error);
       return res.status(400).json({
         success: false,
         error: error.message,
       });
     }
+
+    console.log('✅ Group created successfully:', group);
 
     // Link operators to the group
     if (operatorIds.length > 0) {
