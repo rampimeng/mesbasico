@@ -96,6 +96,17 @@ export const productionService = {
     return data.data;
   },
 
+  // Get today's shift start time for a specific operator (for monitoring)
+  async getOperatorShiftStart(operatorId: string) {
+    const response = await fetch(`${API_URL}/production/sessions/operator-shift-start/${operatorId}`, {
+      method: 'GET',
+      headers: getAuthHeader(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to fetch operator shift start time');
+    return data.data;
+  },
+
   // Get shift end reason ID (creates "Turno Encerrado" if doesn't exist)
   async getShiftEndReasonId(): Promise<string> {
     console.log('🔍 Getting shift end reason ID...');
