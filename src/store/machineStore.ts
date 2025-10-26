@@ -14,7 +14,7 @@ interface MachineStore {
   setMachines: (machines: Machine[]) => void;
   setMatrices: (matrices: Matrix[]) => void;
   updateMachineStatus: (machineId: string, status: MachineStatus, operatorId?: string, stopReasonId?: string) => Promise<void>;
-  updateMatrixStatus: (matrixId: string, status: MatrixStatus, stopReasonId?: string) => Promise<void>;
+  updateMatrixStatus: (matrixId: string, status: MatrixStatus, stopReasonId?: string, operatorId?: string) => Promise<void>;
   startSession: (machineId: string, operatorId: string) => Promise<void>;
   endSession: (sessionId: string) => void;
   getMatricesByMachine: (machineId: string) => Matrix[];
@@ -83,8 +83,8 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
 
   updateMachineStatus: async (machineId, status, operatorId, stopReasonId) => {
     try {
-      // Call backend API
-      await productionService.updateMachineStatus(machineId, status, stopReasonId);
+      // Call backend API - pass operatorId
+      await productionService.updateMachineStatus(machineId, status, stopReasonId, operatorId);
 
       // Update local state
       set((state) => ({
@@ -122,7 +122,7 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
     }
   },
 
-  updateMatrixStatus: async (matrixId, status, stopReasonId) => {
+  updateMatrixStatus: async (matrixId, status, stopReasonId, operatorId) => {
     try {
       // Get matrix info
       const matrix = get().matrices.find((m) => m.id === matrixId);
@@ -131,13 +131,14 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
         return;
       }
 
-      // Call backend API
+      // Call backend API - pass operatorId
       await productionService.updateMatrixStatus(
         matrixId,
         matrix.machineId,
         matrix.matrixNumber,
         status,
-        stopReasonId
+        stopReasonId,
+        operatorId
       );
 
       // Update local state
@@ -161,8 +162,8 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
 
   startSession: async (machineId, operatorId) => {
     try {
-      // Call backend API to start session
-      const session = await productionService.startSession(machineId);
+      // Call backend API to start session - pass operatorId
+      const session = await productionService.startSession(machineId, operatorId);
 
       // Update local state
       set((state) => ({

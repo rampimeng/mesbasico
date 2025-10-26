@@ -254,7 +254,7 @@ const OperatorMirrorView = ({
 
     if (activeMachine && company) {
       try {
-        await productionService.recordCycle(activeMachine.id);
+        await productionService.recordCycle(activeMachine.id, undefined, operatorId);
         setTodayCycles(prev => prev + 1);
         showNotification('Giro registrado com sucesso!', 'success');
       } catch (error) {

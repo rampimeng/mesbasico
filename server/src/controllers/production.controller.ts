@@ -6,9 +6,12 @@ import { getOrCreateShiftEndReason } from '../utils/ensureSystemStopReasons';
 export const startSession = async (req: Request, res: Response) => {
   try {
     const { companyId, id: userId } = req.user!;
-    const { machineId } = req.body;
+    const { machineId, operatorId } = req.body;
 
-    console.log('🎬 Starting production session:', { companyId, userId, machineId });
+    // Use provided operatorId (for Admin/Supervisor monitoring) or logged-in userId (for Operator)
+    const effectiveOperatorId = operatorId || userId;
+
+    console.log('🎬 Starting production session:', { companyId, userId, machineId, effectiveOperatorId });
 
     if (!machineId) {
       return res.status(400).json({
@@ -23,7 +26,7 @@ export const startSession = async (req: Request, res: Response) => {
       .insert({
         companyId,
         machineId,
-        operatorId: userId,
+        operatorId: effectiveOperatorId,
         active: true,
       })
       .select()
@@ -42,7 +45,7 @@ export const startSession = async (req: Request, res: Response) => {
       .from('machines')
       .update({
         status: 'NORMAL_RUNNING',
-        currentOperatorId: userId,
+        currentOperatorId: effectiveOperatorId,
         updatedAt: new Date().toISOString(),
       })
       .eq('id', machineId)
@@ -59,7 +62,7 @@ export const startSession = async (req: Request, res: Response) => {
         companyId,
         sessionId: session.id,
         machineId,
-        operatorId: userId,
+        operatorId: effectiveOperatorId,
         status: 'NORMAL_RUNNING',
         startedAt: new Date().toISOString(),
       });
@@ -88,9 +91,12 @@ export const startSession = async (req: Request, res: Response) => {
 export const updateMachineStatus = async (req: Request, res: Response) => {
   try {
     const { companyId, id: userId } = req.user!;
-    const { machineId, status, stopReasonId } = req.body;
+    const { machineId, status, stopReasonId, operatorId } = req.body;
 
-    console.log('🔄 Updating machine status:', { machineId, status, stopReasonId });
+    // Use provided operatorId (for Admin/Supervisor monitoring) or logged-in userId (for Operator)
+    const effectiveOperatorId = operatorId || userId;
+
+    console.log('🔄 Updating machine status:', { machineId, status, stopReasonId, effectiveOperatorId });
 
     if (!machineId || !status) {
       return res.status(400).json({
@@ -104,7 +110,7 @@ export const updateMachineStatus = async (req: Request, res: Response) => {
       .from('production_sessions')
       .select('*')
       .eq('machineId', machineId)
-      .eq('operatorId', userId)
+      .eq('operatorId', effectiveOperatorId)
       .eq('active', true)
       .order('createdAt', { ascending: false })
       .limit(1);
@@ -148,7 +154,7 @@ export const updateMachineStatus = async (req: Request, res: Response) => {
         companyId,
         sessionId: activeSession.id,
         machineId,
-        operatorId: userId,
+        operatorId: effectiveOperatorId,
         status,
         stopReasonId: status === 'STOPPED' || status === 'EMERGENCY' ? stopReasonId : null,
         startedAt: new Date().toISOString(),
@@ -191,9 +197,12 @@ export const updateMachineStatus = async (req: Request, res: Response) => {
 export const updateMatrixStatus = async (req: Request, res: Response) => {
   try {
     const { companyId, id: userId } = req.user!;
-    const { matrixId, machineId, matrixNumber, status, stopReasonId } = req.body;
+    const { matrixId, machineId, matrixNumber, status, stopReasonId, operatorId } = req.body;
 
-    console.log('🔄 Updating matrix status:', { matrixId, machineId, matrixNumber, status, stopReasonId });
+    // Use provided operatorId (for Admin/Supervisor monitoring) or logged-in userId (for Operator)
+    const effectiveOperatorId = operatorId || userId;
+
+    console.log('🔄 Updating matrix status:', { matrixId, machineId, matrixNumber, status, stopReasonId, effectiveOperatorId });
 
     if (!machineId || !matrixNumber || !status) {
       return res.status(400).json({
@@ -207,7 +216,7 @@ export const updateMatrixStatus = async (req: Request, res: Response) => {
       .from('production_sessions')
       .select('*')
       .eq('machineId', machineId)
-      .eq('operatorId', userId)
+      .eq('operatorId', effectiveOperatorId)
       .eq('active', true)
       .order('createdAt', { ascending: false })
       .limit(1);
@@ -283,9 +292,12 @@ export const updateMatrixStatus = async (req: Request, res: Response) => {
 export const recordCycle = async (req: Request, res: Response) => {
   try {
     const { companyId, id: userId } = req.user!;
-    const { machineId, matrixId } = req.body;
+    const { machineId, matrixId, operatorId } = req.body;
 
-    console.log('🔄 Recording cycle:', { machineId, matrixId });
+    // Use provided operatorId (for Admin/Supervisor monitoring) or logged-in userId (for Operator)
+    const effectiveOperatorId = operatorId || userId;
+
+    console.log('🔄 Recording cycle:', { machineId, matrixId, effectiveOperatorId });
 
     if (!machineId) {
       return res.status(400).json({
@@ -299,7 +311,7 @@ export const recordCycle = async (req: Request, res: Response) => {
       .from('production_sessions')
       .select('*')
       .eq('machineId', machineId)
-      .eq('operatorId', userId)
+      .eq('operatorId', effectiveOperatorId)
       .eq('active', true)
       .order('createdAt', { ascending: false })
       .limit(1);
@@ -321,7 +333,7 @@ export const recordCycle = async (req: Request, res: Response) => {
         sessionId: activeSession.id,
         machineId,
         matrixId: matrixId || null,
-        operatorId: userId,
+        operatorId: effectiveOperatorId,
         cycleCompletedAt: new Date().toISOString(),
       })
       .select()

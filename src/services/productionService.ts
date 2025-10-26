@@ -10,12 +10,12 @@ const getAuthHeader = () => {
 
 export const productionService = {
   // Start a production session
-  async startSession(machineId: string) {
-    console.log('🎬 Starting session for machine:', machineId);
+  async startSession(machineId: string, operatorId?: string) {
+    console.log('🎬 Starting session for machine:', machineId, 'operatorId:', operatorId);
     const response = await fetch(`${API_URL}/production/sessions/start`, {
       method: 'POST',
       headers: getAuthHeader(),
-      body: JSON.stringify({ machineId }),
+      body: JSON.stringify({ machineId, operatorId }),
     });
     const data = await response.json();
     console.log('📦 Start session response:', { ok: response.ok, status: response.status, data });
@@ -24,12 +24,12 @@ export const productionService = {
   },
 
   // End a production session
-  async endSession(machineId: string) {
-    console.log('🛑 Ending session for machine:', machineId);
+  async endSession(machineId: string, operatorId?: string) {
+    console.log('🛑 Ending session for machine:', machineId, 'operatorId:', operatorId);
     const response = await fetch(`${API_URL}/production/sessions/end`, {
       method: 'POST',
       headers: getAuthHeader(),
-      body: JSON.stringify({ machineId }),
+      body: JSON.stringify({ machineId, operatorId }),
     });
     const data = await response.json();
     console.log('📦 End session response:', { ok: response.ok, status: response.status, data });
@@ -38,12 +38,12 @@ export const productionService = {
   },
 
   // Update machine status
-  async updateMachineStatus(machineId: string, status: string, stopReasonId?: string) {
-    console.log('🔄 Updating machine status:', { machineId, status, stopReasonId });
+  async updateMachineStatus(machineId: string, status: string, stopReasonId?: string, operatorId?: string) {
+    console.log('🔄 Updating machine status:', { machineId, status, stopReasonId, operatorId });
     const response = await fetch(`${API_URL}/production/machines/status`, {
       method: 'POST',
       headers: getAuthHeader(),
-      body: JSON.stringify({ machineId, status, stopReasonId }),
+      body: JSON.stringify({ machineId, status, stopReasonId, operatorId }),
     });
     const data = await response.json();
     console.log('📦 Update machine status response:', { ok: response.ok, status: response.status, data });
@@ -57,13 +57,14 @@ export const productionService = {
     machineId: string,
     matrixNumber: number,
     status: string,
-    stopReasonId?: string
+    stopReasonId?: string,
+    operatorId?: string
   ) {
-    console.log('🔄 Updating matrix status:', { matrixId, machineId, matrixNumber, status, stopReasonId });
+    console.log('🔄 Updating matrix status:', { matrixId, machineId, matrixNumber, status, stopReasonId, operatorId });
     const response = await fetch(`${API_URL}/production/matrices/status`, {
       method: 'POST',
       headers: getAuthHeader(),
-      body: JSON.stringify({ matrixId, machineId, matrixNumber, status, stopReasonId }),
+      body: JSON.stringify({ matrixId, machineId, matrixNumber, status, stopReasonId, operatorId }),
     });
     const data = await response.json();
     console.log('📦 Update matrix status response:', { ok: response.ok, status: response.status, data });
@@ -72,12 +73,12 @@ export const productionService = {
   },
 
   // Record a completed cycle
-  async recordCycle(machineId: string, matrixId?: string) {
-    console.log('🔄 Recording cycle:', { machineId, matrixId });
+  async recordCycle(machineId: string, matrixId?: string, operatorId?: string) {
+    console.log('🔄 Recording cycle:', { machineId, matrixId, operatorId });
     const response = await fetch(`${API_URL}/production/cycles`, {
       method: 'POST',
       headers: getAuthHeader(),
-      body: JSON.stringify({ machineId, matrixId }),
+      body: JSON.stringify({ machineId, matrixId, operatorId }),
     });
     const data = await response.json();
     console.log('📦 Record cycle response:', { ok: response.ok, status: response.status, data });
