@@ -5,6 +5,7 @@ import {
   getParetoData,
   getTimeMetrics,
   getCycleMetrics,
+  getOEEDetailedData,
 } from '../controllers/analytics.controller';
 
 const router = Router();
@@ -13,5 +14,6 @@ const router = Router();
 router.get('/pareto', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERVISOR), getParetoData);
 router.get('/time-metrics', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERVISOR), getTimeMetrics);
 router.get('/cycle-metrics', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERVISOR), getCycleMetrics);
+router.get('/oee-detailed', authenticate, authorize(UserRole.ADMIN, UserRole.SUPERVISOR), getOEEDetailedData);
 
 export default router;

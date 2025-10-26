@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Filter, TrendingUp, BarChart3, Activity, AlertCircle } from 'lucide-react';
+import { Calendar, Filter, TrendingUp, BarChart3, Activity, AlertCircle, Download } from 'lucide-react';
 import { DashboardFilters as FilterType } from '@/types';
 import DashboardFilters from './DashboardFilters';
-import { analyticsService, ParetoDataItem, TimeMetrics, CycleMetrics } from '@/services/analyticsService';
+import { analyticsService, ParetoDataItem, TimeMetrics, CycleMetrics, OEEDetailedData } from '@/services/analyticsService';
+import * as XLSX from 'xlsx';
 
 const DashboardHome = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -19,6 +20,7 @@ const DashboardHome = () => {
   const [cycleMetrics, setCycleMetrics] = useState<CycleMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exportingOEE, setExportingOEE] = useState(false);
 
   // Load analytics data
   useEffect(() => {
@@ -64,6 +66,117 @@ const DashboardHome = () => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
+  };
+
+  const exportOEEToExcel = async () => {
+    try {
+      setExportingOEE(true);
+
+      const analyticsFilters = {
+        startDate: filters.startDate.toISOString(),
+        endDate: filters.endDate.toISOString(),
+        groupIds: filters.groupIds,
+        machineIds: filters.machineIds,
+        operatorIds: filters.operatorIds,
+      };
+
+      console.log('📥 Fetching OEE detailed data for export...');
+      const oeeData: OEEDetailedData = await analyticsService.getOEEDetailedData(analyticsFilters);
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Summary
+      const summaryData = [
+        ['Relatório de Disponibilidade Efetiva (OEE)'],
+        [''],
+        ['Período', `${filters.startDate.toLocaleDateString()} - ${filters.endDate.toLocaleDateString()}`],
+        ['Data de Exportação', new Date().toLocaleString()],
+        [''],
+        ['Resumo Geral'],
+        ['OEE (%)', oeeData.summary.oeePercentage.toFixed(2)],
+        ['Tempo Total de Produção (s)', oeeData.summary.totalProductionTime],
+        ['Tempo Total de Produção', formatTime(oeeData.summary.totalProductionTime)],
+        ['Tempo Total Parado (s)', oeeData.summary.totalStopTime],
+        ['Tempo Total Parado', formatTime(oeeData.summary.totalStopTime)],
+        ['Tempo Possível Total (s)', oeeData.summary.totalPossibleTime],
+        ['Total de Máquinas', oeeData.summary.totalMachines],
+        ['Total de Matrizes', oeeData.summary.totalMatrices],
+      ];
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumo');
+
+      // Sheet 2: Machine Details
+      const machineDetailsData: any[][] = [
+        ['Detalhes por Máquina'],
+        [''],
+        ['Máquina', 'Nº Matrizes', 'Tempo Total (s)', 'Tempo Produção (s)', 'Tempo Parado (s)', 'OEE (%)'],
+      ];
+      oeeData.machineDetails.forEach(machine => {
+        machineDetailsData.push([
+          machine.machineName,
+          machine.numberOfMatrices,
+          machine.totalTime,
+          machine.productionTime,
+          machine.stopTime,
+          machine.oeePercentage.toFixed(2),
+        ]);
+      });
+      const wsMachineDetails = XLSX.utils.aoa_to_sheet(machineDetailsData);
+      XLSX.utils.book_append_sheet(wb, wsMachineDetails, 'Detalhes por Máquina');
+
+      // Sheet 3: Matrix Details
+      const matrixDetailsData: any[][] = [
+        ['Detalhes por Matriz'],
+        [''],
+        ['Máquina', 'Matriz Nº', 'Tempo Produção (s)', 'Tempo Parado (s)', 'Utilização (%)'],
+      ];
+      oeeData.machineDetails.forEach(machine => {
+        machine.matrixDetails.forEach(matrix => {
+          matrixDetailsData.push([
+            machine.machineName,
+            matrix.matrixNumber,
+            matrix.productionTime,
+            matrix.stopTime,
+            matrix.utilizationPercentage.toFixed(2),
+          ]);
+        });
+      });
+      const wsMatrixDetails = XLSX.utils.aoa_to_sheet(matrixDetailsData);
+      XLSX.utils.book_append_sheet(wb, wsMatrixDetails, 'Detalhes por Matriz');
+
+      // Sheet 4: Time Logs
+      const timeLogsData: any[][] = [
+        ['Logs de Tempo'],
+        [''],
+        ['Máquina', 'Matriz Nº', 'Status', 'Início', 'Fim', 'Duração (s)', 'Motivo de Parada', 'Operador'],
+      ];
+      oeeData.timeLogs.forEach(log => {
+        timeLogsData.push([
+          log.machineName,
+          log.matrixNumber || 'Todas',
+          log.status,
+          new Date(log.startedAt).toLocaleString(),
+          log.endedAt ? new Date(log.endedAt).toLocaleString() : 'Em andamento',
+          log.durationSeconds,
+          log.stopReasonName || '-',
+          log.operatorName || '-',
+        ]);
+      });
+      const wsTimeLogs = XLSX.utils.aoa_to_sheet(timeLogsData);
+      XLSX.utils.book_append_sheet(wb, wsTimeLogs, 'Logs de Tempo');
+
+      // Generate and download
+      const fileName = `OEE_${filters.startDate.toISOString().split('T')[0]}_${filters.endDate.toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+      console.log('✅ OEE data exported successfully');
+    } catch (err: any) {
+      console.error('❌ Error exporting OEE data:', err);
+      alert('Erro ao exportar dados: ' + (err.message || 'Erro desconhecido'));
+    } finally {
+      setExportingOEE(false);
+    }
   };
 
   const hasData = paretoData.length > 0 || (timeMetrics && timeMetrics.totalTime > 0);
@@ -131,8 +244,20 @@ const DashboardHome = () => {
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
-              <div className="flex items-center justify-between">
+            <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white relative">
+              <button
+                onClick={exportOEEToExcel}
+                disabled={exportingOEE || loading}
+                className="absolute top-4 right-4 p-2 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Exportar dados detalhados do OEE para Excel"
+              >
+                {exportingOEE ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  <Download className="w-5 h-5 text-white" />
+                )}
+              </button>
+              <div className="flex items-center justify-between pr-10">
                 <div>
                   <p className="text-green-100 text-sm font-semibold">Disponibilidade Efetiva (OEE)</p>
                   <p className="text-3xl font-bold mt-2">

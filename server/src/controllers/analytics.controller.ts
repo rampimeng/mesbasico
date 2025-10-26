@@ -299,6 +299,218 @@ export const getTimeMetrics = async (req: Request, res: Response) => {
   }
 };
 
+// Get OEE detailed data for export
+export const getOEEDetailedData = async (req: Request, res: Response) => {
+  try {
+    const { companyId } = req.user!;
+    const { startDate, endDate, groupIds, machineIds, operatorIds } = req.query;
+
+    console.log('📊 Fetching OEE detailed data:', { companyId, startDate, endDate });
+
+    // Build query for time logs
+    let query = supabase
+      .from('time_logs')
+      .select('*')
+      .eq('companyId', companyId);
+
+    // Apply filters
+    if (startDate) {
+      query = query.gte('startedAt', startDate as string);
+    }
+    if (endDate) {
+      query = query.lte('startedAt', endDate as string);
+    }
+    if (machineIds && (machineIds as string).length > 0) {
+      const machineIdArray = (machineIds as string).split(',');
+      query = query.in('machineId', machineIdArray);
+    }
+    if (operatorIds && (operatorIds as string).length > 0) {
+      const operatorIdArray = (operatorIds as string).split(',');
+      query = query.in('operatorId', operatorIdArray);
+    }
+
+    const { data: timeLogs, error } = await query;
+
+    if (error) {
+      console.error('❌ Error fetching time logs:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    // Get unique machine IDs
+    const uniqueMachineIds = [...new Set((timeLogs || []).map(log => log.machineId))];
+
+    // Fetch machine data
+    const { data: machines, error: machinesError } = await supabase
+      .from('machines')
+      .select('id, name, numberOfMatrices')
+      .eq('companyId', companyId)
+      .in('id', uniqueMachineIds);
+
+    if (machinesError) {
+      console.error('❌ Error fetching machines:', machinesError);
+      return res.status(500).json({
+        success: false,
+        error: machinesError.message,
+      });
+    }
+
+    // Create machine map
+    const machineMap = new Map<string, { name: string; numberOfMatrices: number }>();
+    for (const machine of machines || []) {
+      machineMap.set(machine.id, {
+        name: machine.name,
+        numberOfMatrices: machine.numberOfMatrices || 1,
+      });
+    }
+
+    // Calculate detailed metrics per machine
+    const machineDetails: any[] = [];
+    const machineStats = new Map<string, any>();
+
+    // Initialize machine stats
+    for (const [machineId, machineInfo] of machineMap) {
+      machineStats.set(machineId, {
+        machineId,
+        machineName: machineInfo.name,
+        numberOfMatrices: machineInfo.numberOfMatrices,
+        totalTime: 0,
+        productionTime: 0,
+        stopTime: 0,
+        matrixStats: new Map<number, { productionTime: number; stopTime: number }>(),
+        earliest: null as Date | null,
+        latest: null as Date | null,
+      });
+    }
+
+    // Process logs
+    for (const log of timeLogs || []) {
+      if (!log.startedAt) continue;
+
+      const stats = machineStats.get(log.machineId);
+      if (!stats) continue;
+
+      const startedAt = new Date(log.startedAt);
+      const endedAt = log.endedAt ? new Date(log.endedAt) : new Date();
+      const duration = log.durationSeconds || 0;
+
+      // Update time range
+      if (!stats.earliest || startedAt < stats.earliest) stats.earliest = startedAt;
+      if (!stats.latest || endedAt > stats.latest) stats.latest = endedAt;
+
+      const machineInfo = machineMap.get(log.machineId)!;
+      const matricesAffected = log.matrixId ? 1 : machineInfo.numberOfMatrices;
+
+      // Update totals
+      if (log.status === 'NORMAL_RUNNING') {
+        stats.productionTime += duration * matricesAffected;
+      } else if (log.status === 'STOPPED' || log.status === 'EMERGENCY') {
+        stats.stopTime += duration * matricesAffected;
+      }
+
+      // Update matrix-specific stats
+      if (log.matrixNumber) {
+        if (!stats.matrixStats.has(log.matrixNumber)) {
+          stats.matrixStats.set(log.matrixNumber, { productionTime: 0, stopTime: 0 });
+        }
+        const matrixStat = stats.matrixStats.get(log.matrixNumber)!;
+        if (log.status === 'NORMAL_RUNNING') {
+          matrixStat.productionTime += duration;
+        } else if (log.status === 'STOPPED' || log.status === 'EMERGENCY') {
+          matrixStat.stopTime += duration;
+        }
+      }
+    }
+
+    // Calculate summary and machine details
+    let totalProductionTime = 0;
+    let totalStopTime = 0;
+    let totalPossibleTime = 0;
+
+    for (const [machineId, stats] of machineStats) {
+      if (!stats.earliest || !stats.latest) continue;
+
+      const machineTotalTime = Math.floor((stats.latest.getTime() - stats.earliest.getTime()) / 1000);
+      const possibleTime = stats.numberOfMatrices * machineTotalTime;
+
+      stats.totalTime = possibleTime;
+      totalProductionTime += stats.productionTime;
+      totalStopTime += stats.stopTime;
+      totalPossibleTime += possibleTime;
+
+      const machineOEE = possibleTime > 0 ? (stats.productionTime / possibleTime) * 100 : 0;
+
+      // Build matrix details
+      const matrixDetails: any[] = [];
+      for (let i = 1; i <= stats.numberOfMatrices; i++) {
+        const matrixStat = stats.matrixStats.get(i) || { productionTime: 0, stopTime: 0 };
+        const matrixTotal = matrixStat.productionTime + matrixStat.stopTime;
+        const utilization = matrixTotal > 0 ? (matrixStat.productionTime / matrixTotal) * 100 : 0;
+
+        matrixDetails.push({
+          matrixNumber: i,
+          productionTime: matrixStat.productionTime,
+          stopTime: matrixStat.stopTime,
+          utilizationPercentage: Math.round(utilization * 100) / 100,
+        });
+      }
+
+      machineDetails.push({
+        machineId: stats.machineId,
+        machineName: stats.machineName,
+        numberOfMatrices: stats.numberOfMatrices,
+        totalTime: stats.totalTime,
+        productionTime: stats.productionTime,
+        stopTime: stats.stopTime,
+        oeePercentage: Math.round(machineOEE * 100) / 100,
+        matrixDetails,
+      });
+    }
+
+    const oeePercentage = totalPossibleTime > 0 ? (totalProductionTime / totalPossibleTime) * 100 : 0;
+
+    // Format time logs for export
+    const formattedTimeLogs = (timeLogs || []).map(log => ({
+      machineId: log.machineId,
+      machineName: machineMap.get(log.machineId)?.name || log.machineId,
+      matrixId: log.matrixId,
+      matrixNumber: log.matrixNumber,
+      status: log.status,
+      startedAt: log.startedAt,
+      endedAt: log.endedAt,
+      durationSeconds: log.durationSeconds || 0,
+      stopReasonName: log.stopReasonName,
+      operatorName: log.operatorName,
+    }));
+
+    console.log('✅ OEE detailed data calculated');
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          oeePercentage: Math.round(oeePercentage * 100) / 100,
+          totalProductionTime,
+          totalStopTime,
+          totalPossibleTime,
+          totalMachines: machineDetails.length,
+          totalMatrices: Array.from(machineMap.values()).reduce((sum, m) => sum + m.numberOfMatrices, 0),
+        },
+        machineDetails,
+        timeLogs: formattedTimeLogs,
+      },
+    });
+  } catch (error: any) {
+    console.error('❌ Exception in getOEEDetailedData:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch OEE detailed data',
+    });
+  }
+};
+
 // Get cycle metrics - completed vs target
 export const getCycleMetrics = async (req: Request, res: Response) => {
   try {
