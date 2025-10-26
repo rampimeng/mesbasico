@@ -128,13 +128,13 @@ export const getParetoData = async (req: Request, res: Response) => {
   }
 };
 
-// Get time metrics - production time, stop time, etc.
+// Get time metrics - production time, stop time, OEE weighted by matrices
 export const getTimeMetrics = async (req: Request, res: Response) => {
   try {
     const { companyId } = req.user!;
     const { startDate, endDate, groupIds, machineIds, operatorIds } = req.query;
 
-    console.log('⏱️ Fetching time metrics:', { companyId, startDate, endDate });
+    console.log('⏱️ Fetching time metrics with OEE calculation:', { companyId, startDate, endDate });
 
     // Build query
     let query = supabase
@@ -168,48 +168,125 @@ export const getTimeMetrics = async (req: Request, res: Response) => {
       });
     }
 
-    // Calculate metrics
-    let totalProductionTime = 0;
-    let totalStopTime = 0;
+    // Get unique machine IDs from time logs
+    const uniqueMachineIds = [...new Set((timeLogs || []).map(log => log.machineId))];
+
+    // Fetch machine data to get number of matrices
+    const { data: machines, error: machinesError } = await supabase
+      .from('machines')
+      .select('id, numberOfMatrices')
+      .eq('companyId', companyId)
+      .in('id', uniqueMachineIds);
+
+    if (machinesError) {
+      console.error('❌ Error fetching machines:', machinesError);
+      return res.status(500).json({
+        success: false,
+        error: machinesError.message,
+      });
+    }
+
+    // Create a map of machineId -> effective number of matrices (min 1)
+    const machineMatricesMap = new Map<string, number>();
+    for (const machine of machines || []) {
+      const effectiveMatrices = machine.numberOfMatrices || 1; // If 0, treat as 1
+      machineMatricesMap.set(machine.id, effectiveMatrices);
+    }
+
+    console.log('🏭 Machine matrices map:', Object.fromEntries(machineMatricesMap));
+
+    // Calculate OEE-weighted metrics
+    let weightedProductionTime = 0; // Σ(tempo_ativo_matriz_i)
+    let weightedStopTime = 0; // Σ(tempo_parado_matriz_i)
+    let totalPossibleMatrixTime = 0; // n_matrizes × tempo_total
     const stopTimeByReason: Record<string, { reasonId: string; reasonName: string; duration: number }> = {};
 
+    // Group logs by machine and calculate total time per machine
+    const machineTimeRanges = new Map<string, { earliest: Date; latest: Date }>();
+
+    for (const log of timeLogs || []) {
+      if (!log.startedAt) continue;
+
+      const startedAt = new Date(log.startedAt);
+      const endedAt = log.endedAt ? new Date(log.endedAt) : new Date();
+
+      const range = machineTimeRanges.get(log.machineId);
+      if (!range) {
+        machineTimeRanges.set(log.machineId, { earliest: startedAt, latest: endedAt });
+      } else {
+        if (startedAt < range.earliest) range.earliest = startedAt;
+        if (endedAt > range.latest) range.latest = endedAt;
+      }
+    }
+
+    // Calculate total possible matrix time
+    for (const [machineId, range] of machineTimeRanges) {
+      const machineMatrices = machineMatricesMap.get(machineId) || 1;
+      const machineTotalTime = Math.floor((range.latest.getTime() - range.earliest.getTime()) / 1000);
+      totalPossibleMatrixTime += machineMatrices * machineTotalTime;
+
+      console.log(`📊 Machine ${machineId}: ${machineMatrices} matrices × ${machineTotalTime}s = ${machineMatrices * machineTotalTime}s possible`);
+    }
+
+    // Calculate weighted times
     for (const log of timeLogs || []) {
       const duration = log.durationSeconds || 0;
+      if (duration === 0) continue;
+
+      const machineMatrices = machineMatricesMap.get(log.machineId) || 1;
+
+      // If log has matrixId, it's for a single matrix
+      // If no matrixId, it's for the entire machine (all matrices)
+      const matricesAffected = log.matrixId ? 1 : machineMatrices;
 
       if (log.status === 'NORMAL_RUNNING') {
-        totalProductionTime += duration;
+        weightedProductionTime += duration * matricesAffected;
       } else if (log.status === 'STOPPED' || log.status === 'EMERGENCY') {
-        totalStopTime += duration;
+        weightedStopTime += duration * matricesAffected;
 
         if (log.stopReasonId) {
           const reasonId = log.stopReasonId;
           const reasonName = log.stopReasonName || 'Desconhecido';
 
           if (stopTimeByReason[reasonId]) {
-            stopTimeByReason[reasonId].duration += duration;
+            stopTimeByReason[reasonId].duration += duration * matricesAffected;
           } else {
             stopTimeByReason[reasonId] = {
               reasonId,
               reasonName,
-              duration,
+              duration: duration * matricesAffected,
             };
           }
         }
       }
     }
 
-    const totalTime = totalProductionTime + totalStopTime;
-    const efficiency = totalTime > 0 ? (totalProductionTime / totalTime) * 100 : 0;
+    // Calculate OEE (Disponibilidade Efetiva)
+    const oeeAvailability = totalPossibleMatrixTime > 0
+      ? (weightedProductionTime / totalPossibleMatrixTime) * 100
+      : 0;
 
-    console.log('✅ Time metrics calculated');
+    // Calculate traditional efficiency for comparison
+    const totalWeightedTime = weightedProductionTime + weightedStopTime;
+    const traditionalEfficiency = totalWeightedTime > 0
+      ? (weightedProductionTime / totalWeightedTime) * 100
+      : 0;
+
+    console.log('✅ OEE-weighted metrics calculated:', {
+      weightedProductionTime,
+      weightedStopTime,
+      totalPossibleMatrixTime,
+      oeeAvailability: oeeAvailability.toFixed(2) + '%',
+      traditionalEfficiency: traditionalEfficiency.toFixed(2) + '%',
+    });
 
     res.json({
       success: true,
       data: {
-        totalProductionTime,
-        totalStopTime,
-        totalTime,
-        efficiency: Math.round(efficiency * 100) / 100,
+        totalProductionTime: weightedProductionTime,
+        totalStopTime: weightedStopTime,
+        totalTime: totalPossibleMatrixTime,
+        efficiency: Math.round(oeeAvailability * 100) / 100, // Using OEE as efficiency
         stopTimeByReason: Object.values(stopTimeByReason),
       },
     });

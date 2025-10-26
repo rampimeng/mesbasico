@@ -131,6 +131,19 @@ const DashboardHome = () => {
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm font-semibold">Disponibilidade Efetiva (OEE)</p>
+                  <p className="text-3xl font-bold mt-2">
+                    {timeMetrics ? `${timeMetrics.efficiency.toFixed(1)}%` : '0%'}
+                  </p>
+                  <p className="text-green-100 text-xs mt-1">Ponderado por matrizes</p>
+                </div>
+                <TrendingUp className="w-12 h-12 text-green-200" />
+              </div>
+            </div>
+
             <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
               <div className="flex items-center justify-between">
                 <div>
@@ -138,6 +151,7 @@ const DashboardHome = () => {
                   <p className="text-3xl font-bold mt-2">
                     {timeMetrics ? formatTime(timeMetrics.totalProductionTime) : '0h 0m'}
                   </p>
+                  <p className="text-blue-100 text-xs mt-1">Ponderado por matrizes</p>
                 </div>
                 <Activity className="w-12 h-12 text-blue-200" />
               </div>
@@ -150,20 +164,9 @@ const DashboardHome = () => {
                   <p className="text-3xl font-bold mt-2">
                     {timeMetrics ? formatTime(timeMetrics.totalStopTime) : '0h 0m'}
                   </p>
+                  <p className="text-red-100 text-xs mt-1">Ponderado por matrizes</p>
                 </div>
                 <Activity className="w-12 h-12 text-red-200" />
-              </div>
-            </div>
-
-            <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm">Eficiência</p>
-                  <p className="text-3xl font-bold mt-2">
-                    {timeMetrics ? `${timeMetrics.efficiency.toFixed(1)}%` : '0%'}
-                  </p>
-                </div>
-                <TrendingUp className="w-12 h-12 text-green-200" />
               </div>
             </div>
 
