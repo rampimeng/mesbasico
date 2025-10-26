@@ -124,26 +124,31 @@ export const updateMachineStatus = async (req: Request, res: Response) => {
       });
     }
 
-    // End previous time log
+    // End previous time logs (including all matrix-specific logs)
     const { data: openLogs } = await supabase
       .from('time_logs')
       .select('*')
       .eq('sessionId', activeSession.id)
+      .eq('machineId', machineId)
       .is('endedAt', null);
 
     if (openLogs && openLogs.length > 0) {
+      const now = new Date();
+      console.log(`🔄 Closing ${openLogs.length} open time log(s) for machine ${machineId}`);
+
       for (const log of openLogs) {
-        const endedAt = new Date();
         const startedAt = new Date(log.startedAt);
-        const durationSeconds = Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000);
+        const durationSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
 
         await supabase
           .from('time_logs')
           .update({
-            endedAt: endedAt.toISOString(),
+            endedAt: now.toISOString(),
             durationSeconds,
           })
           .eq('id', log.id);
+
+        console.log(`✅ Closed time log ${log.id} - Status: ${log.status}, Matrix: ${log.matrixId || 'N/A'}, Duration: ${durationSeconds}s`);
       }
     }
 
@@ -230,27 +235,31 @@ export const updateMatrixStatus = async (req: Request, res: Response) => {
       });
     }
 
-    // End previous time log for this matrix
+    // End previous time logs for this matrix
+    // This includes both matrix-specific logs AND machine-wide logs (when entire machine was stopped)
     const { data: openLogs } = await supabase
       .from('time_logs')
       .select('*')
       .eq('sessionId', activeSession.id)
-      .eq('matrixId', matrixId)
-      .is('endedAt', null);
+      .eq('machineId', machineId)
+      .is('endedAt', null)
+      .or(`matrixId.eq.${matrixId},matrixId.is.null`);
 
     if (openLogs && openLogs.length > 0) {
+      const now = new Date();
       for (const log of openLogs) {
-        const endedAt = new Date();
         const startedAt = new Date(log.startedAt);
-        const durationSeconds = Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000);
+        const durationSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
 
         await supabase
           .from('time_logs')
           .update({
-            endedAt: endedAt.toISOString(),
+            endedAt: now.toISOString(),
             durationSeconds,
           })
           .eq('id', log.id);
+
+        console.log(`✅ Closed time log ${log.id} for matrix ${matrixId} with duration ${durationSeconds}s`);
       }
     }
 
@@ -263,7 +272,7 @@ export const updateMatrixStatus = async (req: Request, res: Response) => {
         machineId,
         matrixId,
         matrixNumber,
-        operatorId: userId,
+        operatorId: effectiveOperatorId,
         status,
         stopReasonId: status === 'STOPPED' ? stopReasonId : null,
         startedAt: new Date().toISOString(),
@@ -492,9 +501,12 @@ export const getOperatorShiftStart = async (req: Request, res: Response) => {
 export const endSession = async (req: Request, res: Response) => {
   try {
     const { companyId, id: userId } = req.user!;
-    const { machineId } = req.body;
+    const { machineId, operatorId } = req.body;
 
-    console.log('🛑 Ending production session:', { machineId });
+    // Use provided operatorId (for Admin/Supervisor monitoring) or logged-in userId (for Operator)
+    const effectiveOperatorId = operatorId || userId;
+
+    console.log('🛑 Ending production session:', { machineId, effectiveOperatorId });
 
     if (!machineId) {
       return res.status(400).json({
@@ -508,7 +520,7 @@ export const endSession = async (req: Request, res: Response) => {
       .from('production_sessions')
       .select('*')
       .eq('machineId', machineId)
-      .eq('operatorId', userId)
+      .eq('operatorId', effectiveOperatorId)
       .eq('active', true)
       .order('createdAt', { ascending: false })
       .limit(1);
@@ -522,7 +534,7 @@ export const endSession = async (req: Request, res: Response) => {
       });
     }
 
-    // End all open time logs
+    // End all open time logs (closing shift)
     const { data: openLogs } = await supabase
       .from('time_logs')
       .select('*')
@@ -530,18 +542,22 @@ export const endSession = async (req: Request, res: Response) => {
       .is('endedAt', null);
 
     if (openLogs && openLogs.length > 0) {
+      const now = new Date();
+      console.log(`🔄 Closing ${openLogs.length} open time log(s) for session ${activeSession.id} (shift end)`);
+
       for (const log of openLogs) {
-        const endedAt = new Date();
         const startedAt = new Date(log.startedAt);
-        const durationSeconds = Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000);
+        const durationSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
 
         await supabase
           .from('time_logs')
           .update({
-            endedAt: endedAt.toISOString(),
+            endedAt: now.toISOString(),
             durationSeconds,
           })
           .eq('id', log.id);
+
+        console.log(`✅ Closed time log ${log.id} - Status: ${log.status}, Matrix: ${log.matrixId || 'N/A'}, Duration: ${durationSeconds}s`);
       }
     }
 

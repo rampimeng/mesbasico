@@ -9,6 +9,7 @@ import usersRoutes from './users.routes';
 import productionRoutes from './production.routes';
 import analyticsRoutes from './analytics.routes';
 import auditRoutes from './audit.routes';
+import maintenanceRoutes from './maintenance.routes';
 import supabase from '../config/supabase';
 
 const router = Router();
@@ -61,5 +62,6 @@ router.use('/users', usersRoutes);
 router.use('/production', productionRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/audit', auditRoutes);
+router.use('/maintenance', maintenanceRoutes);
 
 export default router;
