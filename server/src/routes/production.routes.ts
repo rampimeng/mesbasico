@@ -11,6 +11,7 @@ import {
   getActiveOperators,
   getTodayActiveTime,
   getMachineActiveTime,
+  closeAllActiveSessions,
 } from '../controllers/production.controller';
 import { authenticate } from '../middleware/auth';
 import { checkRole } from '../middleware/checkRole';
@@ -29,6 +30,7 @@ router.get('/sessions/today-active-time', checkRole([UserRole.OPERATOR, UserRole
 router.get('/sessions/operator-shift-start/:operatorId', checkRole([UserRole.SUPERVISOR, UserRole.ADMIN]), getOperatorShiftStart);
 router.get('/sessions/shift-end-reason', checkRole([UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN]), getShiftEndReasonId);
 router.get('/sessions/active-operators', checkRole([UserRole.SUPERVISOR, UserRole.ADMIN]), getActiveOperators);
+router.post('/sessions/close-all', checkRole([UserRole.ADMIN]), closeAllActiveSessions);
 router.get('/machines/:machineId/active-time', checkRole([UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN]), getMachineActiveTime);
 
 // Status updates

@@ -7,7 +7,13 @@
       "Bash(npx tsc:*)",
       "Bash(npm run dev:*)",
       "Bash(netstat:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(dir:*)",
+      "Bash(timeout /t 3)",
+      "Bash(npm install:*)",
+      "Bash(tasklist:*)",
+      "Bash(taskkill:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

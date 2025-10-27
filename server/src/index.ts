@@ -1,6 +1,7 @@
 import app from './app';
 import { config } from './config/env';
 import supabase from './config/supabase';
+import { initializeScheduler } from './utils/scheduler';
 
 const startServer = () => {
   console.log('🔧 Starting server...');
@@ -14,6 +15,9 @@ const startServer = () => {
     console.log(`🌐 API URL: http://0.0.0.0:${config.port}/api`);
     console.log(`🏥 Health check: http://0.0.0.0:${config.port}/api/health`);
     console.log(`✅ Server started successfully!`);
+
+    // Initialize automatic shift closure scheduler
+    initializeScheduler();
   });
 
   // Testar conexão com o Supabase em background (não bloquear)

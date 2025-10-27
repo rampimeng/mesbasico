@@ -648,17 +648,14 @@ export const getMachineActiveTime = async (req: Request, res: Response) => {
 
     console.log('⏱️ Fetching machine active time:', { machineId, startOfDay: startOfDay.toISOString() });
 
-    // Get recent time logs (last 2 days) to catch logs that started yesterday and are still active
-    const twoDaysAgo = new Date(startOfDay);
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-
+    // Get ONLY time logs that STARTED today (reset daily at midnight)
     const { data: logs, error } = await supabase
       .from('time_logs')
       .select('startedAt, endedAt, durationSeconds')
       .eq('companyId', companyId)
       .eq('machineId', machineId)
       .eq('status', 'NORMAL_RUNNING')
-      .gte('startedAt', twoDaysAgo.toISOString())
+      .gte('startedAt', startOfDay.toISOString())
       .order('startedAt', { ascending: true });
 
     if (error) {
@@ -674,48 +671,14 @@ export const getMachineActiveTime = async (req: Request, res: Response) => {
 
     if (logs && logs.length > 0) {
       for (const log of logs) {
-        const logStart = new Date(log.startedAt);
-
-        // Skip logs that don't overlap with today
         if (log.endedAt) {
-          const logEnd = new Date(log.endedAt);
-          // If log ended before today started, skip it
-          if (logEnd < startOfDay) {
-            continue;
-          }
-        }
-        // If log started after today, skip it (shouldn't happen with our query)
-        const endOfDay = new Date(startOfDay);
-        endOfDay.setHours(23, 59, 59, 999);
-        if (logStart > endOfDay) {
-          continue;
-        }
-
-        if (log.endedAt) {
-          // Completed log - calculate time within today
-          const logEnd = new Date(log.endedAt);
-
-          // Determine the effective start (max of log start and start of day)
-          const effectiveStart = logStart < startOfDay ? startOfDay : logStart;
-
-          // Determine the effective end (min of log end and end of day)
-          const effectiveEnd = logEnd > endOfDay ? endOfDay : logEnd;
-
-          // Calculate duration within today
-          const durationMs = effectiveEnd.getTime() - effectiveStart.getTime();
-          const durationSeconds = Math.floor(durationMs / 1000);
-
-          if (durationSeconds > 0) {
-            totalActiveSeconds += durationSeconds;
-          }
-
-          console.log(`📊 Completed log: start=${logStart.toISOString()}, end=${logEnd.toISOString()}, effectiveStart=${effectiveStart.toISOString()}, effectiveEnd=${effectiveEnd.toISOString()}, duration=${durationSeconds}s`);
+          // Completed log - use stored duration
+          totalActiveSeconds += log.durationSeconds || 0;
+          console.log(`📊 Completed log: ${log.durationSeconds}s`);
         } else {
-          // Active log - determine when it started counting for today
-          // If it started before today, use start of today as the effective start
-          currentRunStart = logStart < startOfDay ? startOfDay : logStart;
-
-          console.log(`📊 Active log: start=${logStart.toISOString()}, effectiveStart=${currentRunStart.toISOString()}`);
+          // Active log - save start time (frontend will calculate current duration)
+          currentRunStart = new Date(log.startedAt);
+          console.log(`📊 Active log: start=${log.startedAt}`);
         }
       }
     }
@@ -734,6 +697,115 @@ export const getMachineActiveTime = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to fetch machine active time',
+    });
+  }
+};
+
+// Get total active time for today (accumulated across all sessions)
+// Close all active sessions at end of day (to be called by cron or manually)
+export const closeAllActiveSessions = async (req: Request, res: Response) => {
+  try {
+    console.log('🌙 Closing all active sessions for end of day...');
+
+    // Get all active production sessions
+    const { data: activeSessions, error: sessionsError } = await supabase
+      .from('production_sessions')
+      .select('id, companyId, machineId, operatorId')
+      .eq('active', true);
+
+    if (sessionsError) {
+      console.error('❌ Error fetching active sessions:', sessionsError);
+      return res.status(500).json({
+        success: false,
+        error: sessionsError.message,
+      });
+    }
+
+    if (!activeSessions || activeSessions.length === 0) {
+      console.log('✅ No active sessions to close');
+      return res.json({
+        success: true,
+        message: 'No active sessions to close',
+        closedCount: 0,
+      });
+    }
+
+    console.log(`📋 Found ${activeSessions.length} active sessions to close`);
+
+    let closedCount = 0;
+    let errorCount = 0;
+
+    const now = new Date().toISOString();
+
+    // Get or create "Turno Encerrado" reason
+    const shiftEndReason = await getOrCreateShiftEndReason(activeSessions[0].companyId);
+
+    for (const session of activeSessions) {
+      try {
+        // 1. Close any active time logs for this session
+        const { error: timeLogError } = await supabase
+          .from('time_logs')
+          .update({
+            endedAt: now,
+            durationSeconds: supabase.sql`EXTRACT(EPOCH FROM (${now}::timestamp - "startedAt"))`,
+          })
+          .eq('sessionId', session.id)
+          .is('endedAt', null);
+
+        if (timeLogError) {
+          console.error(`❌ Error closing time logs for session ${session.id}:`, timeLogError);
+        }
+
+        // 2. Close the production session
+        const { error: sessionError } = await supabase
+          .from('production_sessions')
+          .update({
+            endedAt: now,
+            active: false,
+          })
+          .eq('id', session.id);
+
+        if (sessionError) {
+          console.error(`❌ Error closing session ${session.id}:`, sessionError);
+          errorCount++;
+          continue;
+        }
+
+        // 3. Update machine status to IDLE
+        const { error: machineError } = await supabase
+          .from('machines')
+          .update({
+            status: 'IDLE',
+            currentOperatorId: null,
+            updatedAt: now,
+          })
+          .eq('id', session.machineId);
+
+        if (machineError) {
+          console.error(`❌ Error updating machine ${session.machineId}:`, machineError);
+        }
+
+        closedCount++;
+        console.log(`✅ Closed session ${session.id} for machine ${session.machineId}`);
+      } catch (error: any) {
+        console.error(`❌ Exception closing session ${session.id}:`, error);
+        errorCount++;
+      }
+    }
+
+    console.log(`🌙 End of day closure complete: ${closedCount} sessions closed, ${errorCount} errors`);
+
+    res.json({
+      success: true,
+      message: `Closed ${closedCount} active sessions`,
+      closedCount,
+      errorCount,
+    });
+  } catch (error: any) {
+    console.error('❌ Exception in closeAllActiveSessions:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to close active sessions',
     });
   }
 };
