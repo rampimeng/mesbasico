@@ -517,7 +517,7 @@ export const getCycleMetrics = async (req: Request, res: Response) => {
     const { companyId } = req.user!;
     const { startDate, endDate, groupIds, machineIds, operatorIds } = req.query;
 
-    console.log('🔄 Fetching cycle metrics:', { companyId, startDate, endDate });
+    console.log('🔄 Fetching cycle metrics:', { companyId, startDate, endDate, groupIds, machineIds });
 
     // Build query for cycle logs
     let query = supabase
@@ -553,13 +553,62 @@ export const getCycleMetrics = async (req: Request, res: Response) => {
 
     const completedCycles = cycleLogs?.length || 0;
 
-    // For now, we'll set target as 0 (should be calculated based on standard cycle time and available time)
-    // TODO: Implement target calculation based on machine standard cycle time
-    const targetCycles = 0;
+    // Calculate target cycles based on group's cyclesPerShift
+    let targetCycles = 0;
+
+    // Determine which groups to consider
+    let relevantGroupIds: string[] = [];
+
+    if (groupIds && (groupIds as string).length > 0) {
+      // If groupIds filter is applied, use those groups
+      relevantGroupIds = (groupIds as string).split(',');
+      console.log('📍 Using filtered groups:', relevantGroupIds);
+    } else if (machineIds && (machineIds as string).length > 0) {
+      // If machineIds filter is applied, get groups from those machines
+      const machineIdArray = (machineIds as string).split(',');
+      const { data: machines } = await supabase
+        .from('machines')
+        .select('groupId')
+        .in('id', machineIdArray)
+        .eq('companyId', companyId);
+
+      if (machines) {
+        relevantGroupIds = [...new Set(machines.map(m => m.groupId).filter(Boolean) as string[])];
+        console.log('📍 Using groups from filtered machines:', relevantGroupIds);
+      }
+    } else {
+      // No filter, use all groups from the company
+      const { data: allGroups } = await supabase
+        .from('groups')
+        .select('id')
+        .eq('companyId', companyId);
+
+      if (allGroups) {
+        relevantGroupIds = allGroups.map(g => g.id);
+        console.log('📍 Using all company groups:', relevantGroupIds);
+      }
+    }
+
+    // Fetch groups and sum cyclesPerShift
+    if (relevantGroupIds.length > 0) {
+      const { data: groups } = await supabase
+        .from('groups')
+        .select('id, name, cyclesPerShift')
+        .in('id', relevantGroupIds);
+
+      if (groups) {
+        targetCycles = groups.reduce((sum, group) => {
+          const groupTarget = group.cyclesPerShift || 0;
+          console.log(`📊 Group "${group.name}" target: ${groupTarget} cycles per shift`);
+          return sum + groupTarget;
+        }, 0);
+        console.log(`🎯 Total target cycles (sum of filtered groups): ${targetCycles}`);
+      }
+    }
 
     const percentage = targetCycles > 0 ? (completedCycles / targetCycles) * 100 : 0;
 
-    console.log('✅ Cycle metrics calculated:', completedCycles, 'cycles');
+    console.log('✅ Cycle metrics calculated:', { completedCycles, targetCycles, percentage: percentage.toFixed(2) + '%' });
 
     res.json({
       success: true,
