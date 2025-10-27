@@ -120,4 +120,17 @@ export const productionService = {
     if (!response.ok) throw new Error(data.error || 'Failed to get shift end reason');
     return data.data.shiftEndReasonId;
   },
+
+  // Get list of active operator IDs (operators with active production sessions)
+  async getActiveOperators(): Promise<string[]> {
+    console.log('👥 Fetching active operators...');
+    const response = await fetch(`${API_URL}/production/sessions/active-operators`, {
+      method: 'GET',
+      headers: getAuthHeader(),
+    });
+    const data = await response.json();
+    console.log('📦 Active operators response:', { ok: response.ok, status: response.status, data });
+    if (!response.ok) throw new Error(data.error || 'Failed to fetch active operators');
+    return data.data.activeOperatorIds || [];
+  },
 };

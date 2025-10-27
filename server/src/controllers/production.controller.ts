@@ -634,3 +634,57 @@ export const getShiftEndReasonId = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Get active operators (operators with active production sessions)
+export const getActiveOperators = async (req: Request, res: Response) => {
+  try {
+    const { companyId } = req.user!;
+
+    console.log('👥 Getting active operators for company:', companyId);
+
+    // Get all active production sessions with operator and user information
+    const { data: activeSessions, error } = await supabase
+      .from('production_sessions')
+      .select(`
+        id,
+        operatorId,
+        machineId,
+        startedAt,
+        users!production_sessions_operatorId_fkey (
+          id,
+          name,
+          email
+        )
+      `)
+      .eq('companyId', companyId)
+      .eq('active', true)
+      .is('endedAt', null);
+
+    if (error) {
+      console.error('❌ Error fetching active sessions:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    // Extract unique operator IDs from active sessions
+    const activeOperatorIds = [...new Set((activeSessions || []).map(session => session.operatorId))];
+
+    console.log('✅ Active operators:', activeOperatorIds);
+
+    res.json({
+      success: true,
+      data: {
+        activeOperatorIds,
+        sessionCount: activeSessions?.length || 0,
+      },
+    });
+  } catch (error: any) {
+    console.error('❌ Exception in getActiveOperators:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get active operators',
+    });
+  }
+};

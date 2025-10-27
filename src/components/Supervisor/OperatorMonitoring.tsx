@@ -2,27 +2,37 @@ import { useState, useEffect, useMemo } from 'react';
 import { Monitor, User, Eye, UserCheck, UserX } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useRegistrationStore } from '@/store/registrationStore';
-import { useMachineStore } from '@/store/machineStore';
 import OperatorMirrorView from './OperatorMirrorView';
+import { productionService } from '@/services/productionService';
 
 const OperatorMonitoring = () => {
   const { company } = useAuthStore();
   const { operators, groups, loadOperators, loadGroups } = useRegistrationStore();
-  const { machines, loadAllMachines } = useMachineStore();
   const [selectedOperator, setSelectedOperator] = useState<string | null>(null);
+  const [activeOperatorIds, setActiveOperatorIds] = useState<string[]>([]);
+
+  // Load active operators from backend
+  const loadActiveOperators = async () => {
+    try {
+      const activeIds = await productionService.getActiveOperators();
+      setActiveOperatorIds(activeIds);
+    } catch (error: any) {
+      console.error('❌ Error loading active operators:', error);
+    }
+  };
 
   useEffect(() => {
     loadOperators();
     loadGroups();
-    loadAllMachines();
+    loadActiveOperators();
 
-    // Set up polling to refresh machines every 2 seconds for real-time status
+    // Set up polling to refresh active operators every 2 seconds for real-time status
     const interval = setInterval(() => {
-      loadAllMachines();
+      loadActiveOperators();
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [loadOperators, loadGroups, loadAllMachines]);
+  }, [loadOperators, loadGroups]);
 
   // Get company operators
   const companyOperators = useMemo(() => {
@@ -64,11 +74,9 @@ const OperatorMonitoring = () => {
     return grouped;
   }, [companyOperators, groups]);
 
-  // Check if operator is active (has machines running)
+  // Check if operator is active (has active production session)
   const isOperatorActive = (operatorId: string) => {
-    return machines.some(
-      (m) => m.currentOperatorId === operatorId && m.status !== 'IDLE'
-    );
+    return activeOperatorIds.includes(operatorId);
   };
 
   if (selectedOperator) {
