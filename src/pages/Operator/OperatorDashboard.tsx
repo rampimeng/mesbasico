@@ -65,8 +65,14 @@ const OperatorDashboard = () => {
     // Prevent device sleep
     requestWakeLock();
 
+    // Set up polling to refresh data every 1 second for real-time sync
+    const interval = setInterval(() => {
+      loadMyMachines();
+    }, 1000);
+
     // Cleanup on unmount
     return () => {
+      clearInterval(interval);
       releaseWakeLock();
     };
   }, [loadMyMachines, loadStopReasons]);
@@ -328,6 +334,9 @@ const OperatorDashboard = () => {
 
       // Reload shift start time
       await loadShiftStartTime();
+
+      // Force immediate refresh for real-time sync
+      await loadMyMachines();
     } catch (error: any) {
       console.error('❌ Error in handleStartShift:', error);
       showNotification(`Erro ao iniciar turno: ${error.message}`, 'error');
@@ -385,6 +394,9 @@ const OperatorDashboard = () => {
       // Reset shift start time
       setShiftStartTime(null);
       setShiftDuration('00:00:00');
+
+      // Force immediate refresh for real-time sync
+      await loadMyMachines();
     } catch (error: any) {
       console.error('❌ Error in handleEndShift:', error);
       showNotification(`Erro ao encerrar turno: ${error.message}`, 'error');
@@ -410,6 +422,9 @@ const OperatorDashboard = () => {
 
     showNotification('Pausa geral registrada! Todas as máquinas foram paradas.', 'warning');
     setShowEmergencyModal(false);
+
+    // Force immediate refresh for real-time sync
+    await loadMyMachines();
   };
 
   const handleAddCycle = async () => {
@@ -424,6 +439,9 @@ const OperatorDashboard = () => {
         setTodayCycles(prev => prev + 1);
 
         console.log('✅ Cycle recorded successfully');
+
+        // Force immediate refresh for real-time sync
+        await loadMyMachines();
       } catch (error) {
         console.error('❌ Error recording cycle:', error);
       }

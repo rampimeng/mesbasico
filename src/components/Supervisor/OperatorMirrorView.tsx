@@ -69,10 +69,10 @@ const OperatorMirrorView = ({
     loadStopReasons();
     loadShiftStartTime();
 
-    // Set up polling to refresh data every 2 seconds for real-time updates
+    // Set up polling to refresh data every 1 second for real-time sync
     const interval = setInterval(() => {
       loadAllMachines();
-    }, 2000);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [loadAllMachines, loadStopReasons]);
@@ -186,6 +186,9 @@ const OperatorMirrorView = ({
       }
 
       await loadShiftStartTime();
+
+      // Force immediate refresh for real-time sync
+      await loadAllMachines();
     } catch (error: any) {
       showNotification(`Erro ao iniciar turno: ${error.message}`, 'error');
     }
@@ -229,6 +232,9 @@ const OperatorMirrorView = ({
 
       setShiftStartTime(null);
       setShiftDuration('00:00:00');
+
+      // Force immediate refresh for real-time sync
+      await loadAllMachines();
     } catch (error: any) {
       showNotification(`Erro ao encerrar turno: ${error.message}`, 'error');
     }
@@ -250,6 +256,9 @@ const OperatorMirrorView = ({
 
     showNotification('Pausa geral registrada! Todas as máquinas foram paradas.', 'warning');
     setShowEmergencyModal(false);
+
+    // Force immediate refresh for real-time sync
+    await loadAllMachines();
   };
 
   const handleAddCycle = async () => {
@@ -262,6 +271,9 @@ const OperatorMirrorView = ({
         await productionService.recordCycle(activeMachine.id, undefined, operatorId);
         setTodayCycles(prev => prev + 1);
         showNotification('Giro registrado com sucesso!', 'success');
+
+        // Force immediate refresh for real-time sync
+        await loadAllMachines();
       } catch (error) {
         showNotification('Erro ao registrar giro.', 'error');
       }
