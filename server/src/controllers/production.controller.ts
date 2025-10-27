@@ -674,11 +674,10 @@ export const getMachineActiveTime = async (req: Request, res: Response) => {
           // Completed log - use stored duration
           totalActiveSeconds += log.durationSeconds || 0;
         } else {
-          // Active log - calculate current duration
+          // Active log - just save the start time (frontend will calculate current duration)
           const start = new Date(log.startedAt);
-          const durationSeconds = Math.floor((now.getTime() - start.getTime()) / 1000);
-          totalActiveSeconds += durationSeconds;
           currentRunStart = start;
+          // Do NOT add to totalActiveSeconds - let frontend calculate the live time
         }
       }
     }
