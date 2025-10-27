@@ -97,6 +97,17 @@ export const productionService = {
     return data.data;
   },
 
+  // Get total active time for today (accumulated across all sessions)
+  async getTodayActiveTime() {
+    const response = await fetch(`${API_URL}/production/sessions/today-active-time`, {
+      method: 'GET',
+      headers: getAuthHeader(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to fetch active time');
+    return data.data;
+  },
+
   // Get today's shift start time for a specific operator (for monitoring)
   async getOperatorShiftStart(operatorId: string) {
     const response = await fetch(`${API_URL}/production/sessions/operator-shift-start/${operatorId}`, {

@@ -635,6 +635,88 @@ export const getShiftEndReasonId = async (req: Request, res: Response) => {
   }
 };
 
+// Get total active time for today (accumulated across all sessions)
+export const getTodayActiveTime = async (req: Request, res: Response) => {
+  try {
+    const { companyId, id: userId } = req.user!;
+
+    // Get today's date range in São Paulo timezone
+    const now = new Date();
+    const saoPauloOffset = -3 * 60; // UTC-3 in minutes
+    const localOffset = now.getTimezoneOffset();
+    const saoPauloTime = new Date(now.getTime() + (localOffset + saoPauloOffset) * 60000);
+
+    // Start of today in São Paulo
+    const startOfDay = new Date(saoPauloTime);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    // End of today in São Paulo
+    const endOfDay = new Date(saoPauloTime);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    console.log('⏱️ Fetching total active time for today:', {
+      userId,
+      startOfDay: startOfDay.toISOString(),
+      endOfDay: endOfDay.toISOString()
+    });
+
+    // Get all production sessions of the day for this user
+    const { data: sessions, error } = await supabase
+      .from('production_sessions')
+      .select('startedAt, endedAt')
+      .eq('companyId', companyId)
+      .eq('operatorId', userId)
+      .gte('startedAt', startOfDay.toISOString())
+      .lte('startedAt', endOfDay.toISOString())
+      .order('startedAt', { ascending: true });
+
+    if (error) {
+      console.error('❌ Error fetching sessions:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    let totalActiveSeconds = 0;
+    let currentSessionStart: Date | null = null;
+
+    if (sessions && sessions.length > 0) {
+      for (const session of sessions) {
+        const sessionStart = new Date(session.startedAt);
+        const sessionEnd = session.endedAt ? new Date(session.endedAt) : now;
+
+        const durationSeconds = Math.floor((sessionEnd.getTime() - sessionStart.getTime()) / 1000);
+        totalActiveSeconds += durationSeconds;
+
+        // If session is still active (no endedAt), save the start time
+        if (!session.endedAt) {
+          currentSessionStart = sessionStart;
+        }
+
+        console.log(`📊 Session: ${sessionStart.toISOString()} -> ${session.endedAt || 'active'}, Duration: ${durationSeconds}s`);
+      }
+    }
+
+    console.log(`✅ Total active time today: ${totalActiveSeconds}s (${Math.floor(totalActiveSeconds / 3600)}h ${Math.floor((totalActiveSeconds % 3600) / 60)}m)`);
+
+    res.json({
+      success: true,
+      data: {
+        totalActiveSeconds,
+        currentSessionStart: currentSessionStart?.toISOString() || null,
+        sessionsCount: sessions?.length || 0,
+      },
+    });
+  } catch (error: any) {
+    console.error('❌ Exception in getTodayActiveTime:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch active time',
+    });
+  }
+};
+
 // Get active operators (operators with active production sessions)
 export const getActiveOperators = async (req: Request, res: Response) => {
   try {

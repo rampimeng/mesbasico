@@ -9,6 +9,7 @@ import {
   getOperatorShiftStart,
   getShiftEndReasonId,
   getActiveOperators,
+  getTodayActiveTime,
 } from '../controllers/production.controller';
 import { authenticate } from '../middleware/auth';
 import { checkRole } from '../middleware/checkRole';
@@ -23,6 +24,7 @@ router.use(authenticate);
 router.post('/sessions/start', checkRole([UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN]), startSession);
 router.post('/sessions/end', checkRole([UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN]), endSession);
 router.get('/sessions/today-shift-start', checkRole([UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN]), getTodayShiftStart);
+router.get('/sessions/today-active-time', checkRole([UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN]), getTodayActiveTime);
 router.get('/sessions/operator-shift-start/:operatorId', checkRole([UserRole.SUPERVISOR, UserRole.ADMIN]), getOperatorShiftStart);
 router.get('/sessions/shift-end-reason', checkRole([UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.ADMIN]), getShiftEndReasonId);
 router.get('/sessions/active-operators', checkRole([UserRole.SUPERVISOR, UserRole.ADMIN]), getActiveOperators);
