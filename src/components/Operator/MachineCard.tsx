@@ -4,6 +4,7 @@ import { useMachineStore } from '@/store/machineStore';
 import { useAuthStore } from '@/store/authStore';
 import { Play, Square, Clock, Timer } from 'lucide-react';
 import StopReasonModal from './StopReasonModal';
+import { productionService } from '@/services/productionService';
 
 interface MachineCardProps {
   machine: Machine;
@@ -17,26 +18,54 @@ const MachineCard = ({ machine }: MachineCardProps) => {
   const [showStopModal, setShowStopModal] = useState(false);
   const [stopTarget, setStopTarget] = useState<'machine' | number>('machine');
   const [activeTime, setActiveTime] = useState(0);
-  const [isRunning, setIsRunning] = useState(machine.status === MachineStatus.NORMAL_RUNNING);
+  const [totalActiveSeconds, setTotalActiveSeconds] = useState(0);
+  const [currentRunStart, setCurrentRunStart] = useState<Date | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Timer para contabilizar tempo de atividade
+  // Load machine active time from backend
+  const loadMachineActiveTime = async () => {
+    try {
+      const data = await productionService.getMachineActiveTime(machine.id);
+      setTotalActiveSeconds(data.totalActiveSeconds || 0);
+      setCurrentRunStart(data.currentRunStart ? new Date(data.currentRunStart) : null);
+    } catch (error) {
+      console.error('❌ Error loading machine active time:', error);
+    }
+  };
+
+  // Load active time on mount and every 5 seconds
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
+    loadMachineActiveTime();
 
-    if (isRunning && machine.status === MachineStatus.NORMAL_RUNNING) {
-      interval = setInterval(() => {
-        setActiveTime((prev) => prev + 1);
-      }, 1000);
+    const interval = setInterval(() => {
+      loadMachineActiveTime();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [machine.id]);
+
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Calculate active time (accumulated + current run)
+  useEffect(() => {
+    let totalSeconds = totalActiveSeconds;
+
+    if (currentRunStart) {
+      const now = currentTime.getTime();
+      const start = currentRunStart.getTime();
+      const currentRunSeconds = Math.floor((now - start) / 1000);
+      totalSeconds += currentRunSeconds;
     }
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRunning, machine.status]);
-
-  useEffect(() => {
-    setIsRunning(machine.status === MachineStatus.NORMAL_RUNNING);
-  }, [machine.status]);
+    setActiveTime(totalSeconds);
+  }, [totalActiveSeconds, currentRunStart, currentTime]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -59,14 +88,14 @@ const MachineCard = ({ machine }: MachineCardProps) => {
     }
   };
 
-  const handleStartMachine = () => {
+  const handleStartMachine = async () => {
     updateMachineStatus(machine.id, MachineStatus.NORMAL_RUNNING, user?.id);
     // Iniciar todas as matrizes
     matrices.forEach((matrix) => {
       updateMatrixStatus(matrix.id, MatrixStatus.RUNNING);
     });
-    setActiveTime(0);
-    setIsRunning(true);
+    // Reload active time immediately
+    await loadMachineActiveTime();
   };
 
   const handleStopMachine = () => {
@@ -86,7 +115,6 @@ const MachineCard = ({ machine }: MachineCardProps) => {
         console.log('🚫 Stopping matrix', matrix.id, 'with reasonId:', reasonId);
         updateMatrixStatus(matrix.id, MatrixStatus.STOPPED, reasonId);
       });
-      setIsRunning(false);
     } else {
       // Parar matriz específica
       const matrixId = matrices[stopTarget as number]?.id;

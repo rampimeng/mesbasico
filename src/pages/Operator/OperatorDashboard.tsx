@@ -22,8 +22,7 @@ const OperatorDashboard = () => {
   const [todayCycles, setTodayCycles] = useState(getTodayCycles(company?.id || '', user?.id));
 
   // Shift timer states
-  const [totalActiveSeconds, setTotalActiveSeconds] = useState(0); // Accumulated time from all sessions today
-  const [currentSessionStart, setCurrentSessionStart] = useState<Date | null>(null); // Current active session start
+  const [shiftStartTime, setShiftStartTime] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [shiftDuration, setShiftDuration] = useState('00:00:00');
 
@@ -78,11 +77,6 @@ const OperatorDashboard = () => {
       loadMyMachines();
     }, 1000);
 
-    // Poll accumulated time every 5 seconds
-    const timeInterval = setInterval(() => {
-      loadShiftStartTime();
-    }, 5000);
-
     // Poll cycle logs every 5 seconds
     const cycleInterval = setInterval(() => {
       const today = new Date();
@@ -95,7 +89,6 @@ const OperatorDashboard = () => {
     // Cleanup on unmount
     return () => {
       clearInterval(machineInterval);
-      clearInterval(timeInterval);
       clearInterval(cycleInterval);
       releaseWakeLock();
     };
@@ -103,14 +96,7 @@ const OperatorDashboard = () => {
 
   // Update today's cycles count when cycleLogs change
   useEffect(() => {
-    console.log('🔄 Updating today cycles count...');
-    console.log('📦 Current cycleLogs:', cycleLogs);
-    console.log('📦 Company ID:', company?.id, 'User ID:', user?.id);
-
-    const count = getTodayCycles(company?.id || '', user?.id);
-    console.log('✅ Today cycles count:', count);
-
-    setTodayCycles(count);
+    setTodayCycles(getTodayCycles(company?.id || '', user?.id));
   }, [cycleLogs, user, company, getTodayCycles]);
 
   // Fullscreen functions
@@ -243,24 +229,15 @@ const OperatorDashboard = () => {
     };
   }, [wakeLock]);
 
-  // Load total active time for today (accumulated from all sessions)
+  // Load shift start time
   const loadShiftStartTime = async () => {
     try {
-      console.log('🔄 Loading active time from API...');
-      const data = await productionService.getTodayActiveTime();
-
-      console.log('📦 Received data from API:', data);
-
-      setTotalActiveSeconds(data.totalActiveSeconds || 0);
-      setCurrentSessionStart(data.currentSessionStart ? new Date(data.currentSessionStart) : null);
-
-      console.log('✅ Active time loaded and state updated:', {
-        totalActiveSeconds: data.totalActiveSeconds,
-        currentSessionStart: data.currentSessionStart,
-        sessionsCount: data.sessionsCount
-      });
+      const data = await productionService.getTodayShiftStart();
+      if (data.shiftStartTime) {
+        setShiftStartTime(new Date(data.shiftStartTime));
+      }
     } catch (error) {
-      console.error('❌ Error loading active time:', error);
+      console.error('❌ Error loading shift start time:', error);
     }
   };
 
@@ -273,27 +250,22 @@ const OperatorDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Calculate shift duration (accumulated time + current session time)
+  // Calculate shift duration
   useEffect(() => {
-    let totalSeconds = totalActiveSeconds;
-
-    // If there's a current active session, add the time since it started
-    if (currentSessionStart) {
+    if (shiftStartTime) {
       const now = currentTime.getTime();
-      const start = currentSessionStart.getTime();
-      const currentSessionSeconds = Math.floor((now - start) / 1000);
-      totalSeconds += currentSessionSeconds;
+      const start = shiftStartTime.getTime();
+      const diffSeconds = Math.floor((now - start) / 1000);
+
+      const hours = Math.floor(diffSeconds / 3600);
+      const minutes = Math.floor((diffSeconds % 3600) / 60);
+      const seconds = diffSeconds % 60;
+
+      setShiftDuration(
+        `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+      );
     }
-
-    // Format as HH:MM:SS
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    const formatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-    setShiftDuration(formatted);
-  }, [totalActiveSeconds, currentSessionStart, currentTime]);
+  }, [shiftStartTime, currentTime]);
 
   // Format current time for São Paulo timezone
   const formatCurrentTime = () => {
@@ -433,8 +405,9 @@ const OperatorDashboard = () => {
         showNotification(`${errorCount} máquina(s) falharam ao parar.`, 'error');
       }
 
-      // Reload shift time to update accumulated time
-      await loadShiftStartTime();
+      // Reset shift time
+      setShiftStartTime(null);
+      setShiftDuration('00:00:00');
 
       // Force immediate refresh for real-time sync
       await loadMyMachines();
@@ -518,8 +491,8 @@ const OperatorDashboard = () => {
     (m) => m.status !== MachineStatus.IDLE && m.status !== MachineStatus.STOPPED
   );
 
-  // Turno está ativo se houver máquinas ativas OU se tiver tempo ativo acumulado
-  const shiftIsActive = anyMachineActive || currentSessionStart !== null;
+  // Turno está ativo se houver máquinas ativas OU se tiver shift start time
+  const shiftIsActive = anyMachineActive || shiftStartTime !== null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -550,13 +523,13 @@ const OperatorDashboard = () => {
 
             {/* Timer and Clock Section */}
             <div className="flex items-center gap-4">
-              {/* Shift Timer - Show if there's any active time today */}
-              {(totalActiveSeconds > 0 || currentSessionStart) && (
+              {/* Shift Timer */}
+              {shiftStartTime && (
                 <div className="bg-blue-50 px-4 py-2 rounded-lg border-2 border-blue-300">
                   <div className="flex items-center gap-2">
                     <Clock className="w-5 h-5 text-blue-600" />
                     <div>
-                      <p className="text-xs text-blue-600 font-semibold">Tempo Ativo</p>
+                      <p className="text-xs text-blue-600 font-semibold">Tempo de Turno</p>
                       <p className="text-xl font-bold text-blue-700 tabular-nums">{shiftDuration}</p>
                     </div>
                   </div>

@@ -636,19 +636,81 @@ export const getShiftEndReasonId = async (req: Request, res: Response) => {
 };
 
 // Get total active time for today (accumulated across all sessions)
+// Get machine active time for today
+export const getMachineActiveTime = async (req: Request, res: Response) => {
+  try {
+    const { companyId } = req.user!;
+    const { machineId } = req.params;
+
+    const now = new Date();
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    console.log('⏱️ Fetching machine active time:', { machineId, startOfDay: startOfDay.toISOString() });
+
+    // Get all time logs for this machine today with status NORMAL_RUNNING
+    const { data: logs, error } = await supabase
+      .from('time_logs')
+      .select('startedAt, endedAt, durationSeconds')
+      .eq('companyId', companyId)
+      .eq('machineId', machineId)
+      .eq('status', 'NORMAL_RUNNING')
+      .gte('startedAt', startOfDay.toISOString());
+
+    if (error) {
+      console.error('❌ Error fetching machine time logs:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    let totalActiveSeconds = 0;
+    let currentRunStart: Date | null = null;
+
+    if (logs && logs.length > 0) {
+      for (const log of logs) {
+        if (log.endedAt) {
+          // Completed log - use stored duration
+          totalActiveSeconds += log.durationSeconds || 0;
+        } else {
+          // Active log - calculate current duration
+          const start = new Date(log.startedAt);
+          const durationSeconds = Math.floor((now.getTime() - start.getTime()) / 1000);
+          totalActiveSeconds += durationSeconds;
+          currentRunStart = start;
+        }
+      }
+    }
+
+    console.log(`✅ Machine ${machineId} active time today: ${totalActiveSeconds}s`);
+
+    res.json({
+      success: true,
+      data: {
+        totalActiveSeconds,
+        currentRunStart: currentRunStart?.toISOString() || null,
+      },
+    });
+  } catch (error: any) {
+    console.error('❌ Exception in getMachineActiveTime:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch machine active time',
+    });
+  }
+};
+
+// Get total active time for today (accumulated across all sessions)
 export const getTodayActiveTime = async (req: Request, res: Response) => {
   try {
     const { companyId, id: userId } = req.user!;
 
     // Get today's date range - simplified approach
-    // Get start of today in UTC (00:00:00 today in user's timezone might be yesterday in UTC)
     const now = new Date();
-
-    // Get start of day (last 24 hours for simplicity)
     const startOfDay = new Date(now);
     startOfDay.setHours(0, 0, 0, 0);
 
-    // Get end of day
     const endOfDay = new Date(now);
     endOfDay.setHours(23, 59, 59, 999);
 

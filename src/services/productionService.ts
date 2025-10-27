@@ -144,4 +144,15 @@ export const productionService = {
     if (!response.ok) throw new Error(data.error || 'Failed to fetch active operators');
     return data.data.activeOperatorIds || [];
   },
+
+  // Get machine active time for today
+  async getMachineActiveTime(machineId: string) {
+    const response = await fetch(`${API_URL}/production/machines/${machineId}/active-time`, {
+      method: 'GET',
+      headers: getAuthHeader(),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to fetch machine active time');
+    return data.data;
+  },
 };
