@@ -22,19 +22,23 @@ const MachineCard = ({ machine }: MachineCardProps) => {
   const [currentRunStart, setCurrentRunStart] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Load machine active time from backend
-  const loadMachineActiveTime = async () => {
-    try {
-      const data = await productionService.getMachineActiveTime(machine.id);
-      setTotalActiveSeconds(data.totalActiveSeconds || 0);
-      setCurrentRunStart(data.currentRunStart ? new Date(data.currentRunStart) : null);
-    } catch (error) {
-      console.error('❌ Error loading machine active time:', error);
-    }
-  };
-
   // Load active time on mount and every 5 seconds
   useEffect(() => {
+    const loadMachineActiveTime = async () => {
+      try {
+        const data = await productionService.getMachineActiveTime(machine.id);
+        setTotalActiveSeconds(data.totalActiveSeconds || 0);
+        setCurrentRunStart(data.currentRunStart ? new Date(data.currentRunStart) : null);
+        console.log('📊 Machine active time loaded:', {
+          machineId: machine.id,
+          totalActiveSeconds: data.totalActiveSeconds,
+          currentRunStart: data.currentRunStart
+        });
+      } catch (error) {
+        console.error('❌ Error loading machine active time:', error);
+      }
+    };
+
     loadMachineActiveTime();
 
     const interval = setInterval(() => {
@@ -88,14 +92,12 @@ const MachineCard = ({ machine }: MachineCardProps) => {
     }
   };
 
-  const handleStartMachine = async () => {
+  const handleStartMachine = () => {
     updateMachineStatus(machine.id, MachineStatus.NORMAL_RUNNING, user?.id);
     // Iniciar todas as matrizes
     matrices.forEach((matrix) => {
       updateMatrixStatus(matrix.id, MatrixStatus.RUNNING);
     });
-    // Reload active time immediately
-    await loadMachineActiveTime();
   };
 
   const handleStopMachine = () => {

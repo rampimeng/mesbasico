@@ -21,10 +21,10 @@ const OperatorDashboard = () => {
   const [blockedMessage, setBlockedMessage] = useState('');
   const [todayCycles, setTodayCycles] = useState(getTodayCycles(company?.id || '', user?.id));
 
-  // Shift timer states
-  const [shiftStartTime, setShiftStartTime] = useState<Date | null>(null);
+  // Session timer states (time since screen opened)
+  const [sessionStartTime] = useState<Date>(new Date()); // Fixed at mount time
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [shiftDuration, setShiftDuration] = useState('00:00:00');
+  const [sessionDuration, setSessionDuration] = useState('00:00:00');
 
   // Wake Lock state
   const [wakeLock, setWakeLock] = useState<any>(null);
@@ -57,7 +57,6 @@ const OperatorDashboard = () => {
     console.log('🔄 OperatorDashboard mounted, loading data...');
     loadMyMachines();
     loadStopReasons();
-    loadShiftStartTime();
 
     // Load today's cycle logs with date filter
     const today = new Date();
@@ -229,18 +228,6 @@ const OperatorDashboard = () => {
     };
   }, [wakeLock]);
 
-  // Load shift start time
-  const loadShiftStartTime = async () => {
-    try {
-      const data = await productionService.getTodayShiftStart();
-      if (data.shiftStartTime) {
-        setShiftStartTime(new Date(data.shiftStartTime));
-      }
-    } catch (error) {
-      console.error('❌ Error loading shift start time:', error);
-    }
-  };
-
   // Update current time every second
   useEffect(() => {
     const timer = setInterval(() => {
@@ -250,22 +237,20 @@ const OperatorDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Calculate shift duration
+  // Calculate session duration (time since screen opened)
   useEffect(() => {
-    if (shiftStartTime) {
-      const now = currentTime.getTime();
-      const start = shiftStartTime.getTime();
-      const diffSeconds = Math.floor((now - start) / 1000);
+    const now = currentTime.getTime();
+    const start = sessionStartTime.getTime();
+    const diffSeconds = Math.floor((now - start) / 1000);
 
-      const hours = Math.floor(diffSeconds / 3600);
-      const minutes = Math.floor((diffSeconds % 3600) / 60);
-      const seconds = diffSeconds % 60;
+    const hours = Math.floor(diffSeconds / 3600);
+    const minutes = Math.floor((diffSeconds % 3600) / 60);
+    const seconds = diffSeconds % 60;
 
-      setShiftDuration(
-        `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-      );
-    }
-  }, [shiftStartTime, currentTime]);
+    setSessionDuration(
+      `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    );
+  }, [sessionStartTime, currentTime]);
 
   // Format current time for São Paulo timezone
   const formatCurrentTime = () => {
@@ -346,8 +331,7 @@ const OperatorDashboard = () => {
         showNotification(`${errorCount} máquina(s) falharam ao iniciar.`, 'error');
       }
 
-      // Reload shift start time
-      await loadShiftStartTime();
+      // No need to reload - session time is independent
 
       // Force immediate refresh for real-time sync
       await loadMyMachines();
@@ -405,9 +389,7 @@ const OperatorDashboard = () => {
         showNotification(`${errorCount} máquina(s) falharam ao parar.`, 'error');
       }
 
-      // Reset shift time
-      setShiftStartTime(null);
-      setShiftDuration('00:00:00');
+      // Session time continues running (doesn't reset on shift end)
 
       // Force immediate refresh for real-time sync
       await loadMyMachines();
@@ -491,8 +473,8 @@ const OperatorDashboard = () => {
     (m) => m.status !== MachineStatus.IDLE && m.status !== MachineStatus.STOPPED
   );
 
-  // Turno está ativo se houver máquinas ativas OU se tiver shift start time
-  const shiftIsActive = anyMachineActive || shiftStartTime !== null;
+  // Turno está ativo se houver máquinas ativas
+  const shiftIsActive = anyMachineActive;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -523,18 +505,16 @@ const OperatorDashboard = () => {
 
             {/* Timer and Clock Section */}
             <div className="flex items-center gap-4">
-              {/* Shift Timer */}
-              {shiftStartTime && (
-                <div className="bg-blue-50 px-4 py-2 rounded-lg border-2 border-blue-300">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="text-xs text-blue-600 font-semibold">Tempo de Turno</p>
-                      <p className="text-xl font-bold text-blue-700 tabular-nums">{shiftDuration}</p>
-                    </div>
+              {/* Session Timer */}
+              <div className="bg-blue-50 px-4 py-2 rounded-lg border-2 border-blue-300">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <p className="text-xs text-blue-600 font-semibold">Tempo Ativo</p>
+                    <p className="text-xl font-bold text-blue-700 tabular-nums">{sessionDuration}</p>
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* Current Time */}
               <div className="bg-green-50 px-4 py-2 rounded-lg border-2 border-green-300">
