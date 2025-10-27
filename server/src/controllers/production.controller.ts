@@ -743,17 +743,31 @@ export const closeAllActiveSessions = async (req: Request, res: Response) => {
     for (const session of activeSessions) {
       try {
         // 1. Close any active time logs for this session
-        const { error: timeLogError } = await supabase
+        // First, get active logs to calculate duration
+        const { data: activeLogs } = await supabase
           .from('time_logs')
-          .update({
-            endedAt: now,
-            durationSeconds: supabase.sql`EXTRACT(EPOCH FROM (${now}::timestamp - "startedAt"))`,
-          })
+          .select('id, startedAt')
           .eq('sessionId', session.id)
           .is('endedAt', null);
 
-        if (timeLogError) {
-          console.error(`❌ Error closing time logs for session ${session.id}:`, timeLogError);
+        if (activeLogs && activeLogs.length > 0) {
+          for (const log of activeLogs) {
+            const start = new Date(log.startedAt);
+            const end = new Date(now);
+            const durationSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
+
+            const { error: timeLogError } = await supabase
+              .from('time_logs')
+              .update({
+                endedAt: now,
+                durationSeconds,
+              })
+              .eq('id', log.id);
+
+            if (timeLogError) {
+              console.error(`❌ Error closing time log ${log.id}:`, timeLogError);
+            }
+          }
         }
 
         // 2. Close the production session
