@@ -177,7 +177,6 @@ export const createMachine = async (req: Request, res: Response) => {
       const matricesToCreate = [];
       for (let i = 1; i <= numberOfMatrices; i++) {
         matricesToCreate.push({
-          companyId,
           machineId: machine.id,
           matrixNumber: i,
           status: 'STOPPED',

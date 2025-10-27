@@ -70,7 +70,6 @@ export const createMissingMatrices = async (req: Request, res: Response) => {
       const matricesToCreate = [];
       for (let i = existingCount + 1; i <= machine.numberOfMatrices; i++) {
         matricesToCreate.push({
-          companyId,
           machineId: machine.id,
           matrixNumber: i,
           status: 'STOPPED',

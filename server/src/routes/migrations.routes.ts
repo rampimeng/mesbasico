@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { createMissingMatrices } from '../controllers/migrations.controller';
 import { authenticate } from '../middleware/auth';
-import { checkRole, UserRole } from '../middleware/rbac';
+import { checkRole } from '../middleware/checkRole';
+import { UserRole } from '../types';
 
 const router = Router();
 
