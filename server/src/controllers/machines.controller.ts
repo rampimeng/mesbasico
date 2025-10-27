@@ -170,6 +170,33 @@ export const createMachine = async (req: Request, res: Response) => {
 
     console.log('✅ Machine created successfully:', machine);
 
+    // Create matrices if numberOfMatrices > 0
+    if (numberOfMatrices && numberOfMatrices > 0) {
+      console.log(`🔢 Creating ${numberOfMatrices} matrices for machine ${machine.id}`);
+
+      const matricesToCreate = [];
+      for (let i = 1; i <= numberOfMatrices; i++) {
+        matricesToCreate.push({
+          companyId,
+          machineId: machine.id,
+          matrixNumber: i,
+          status: 'STOPPED',
+        });
+      }
+
+      const { data: matrices, error: matricesError } = await supabase
+        .from('matrices')
+        .insert(matricesToCreate)
+        .select();
+
+      if (matricesError) {
+        console.error('❌ Error creating matrices:', matricesError);
+        // Don't fail the request, just log the error
+      } else {
+        console.log(`✅ Created ${matrices?.length || 0} matrices`);
+      }
+    }
+
     res.status(201).json({
       success: true,
       data: machine,
