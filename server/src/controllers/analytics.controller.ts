@@ -589,16 +589,16 @@ export const getCycleMetrics = async (req: Request, res: Response) => {
       }
     }
 
-    // Fetch groups and sum cyclesPerShift
+    // Fetch groups and sum expectedCyclesPerShift
     if (relevantGroupIds.length > 0) {
       const { data: groups } = await supabase
         .from('groups')
-        .select('id, name, cyclesPerShift')
+        .select('id, name, expectedCyclesPerShift')
         .in('id', relevantGroupIds);
 
       if (groups) {
         targetCycles = groups.reduce((sum, group) => {
-          const groupTarget = group.cyclesPerShift || 0;
+          const groupTarget = group.expectedCyclesPerShift || 0;
           console.log(`📊 Group "${group.name}" target: ${groupTarget} cycles per shift`);
           return sum + groupTarget;
         }, 0);
