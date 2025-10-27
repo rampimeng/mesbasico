@@ -1,39 +1,96 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useMachineStore } from '@/store/machineStore';
-import { useRegistrationStore } from '@/store/registrationStore';
-import { Machine, MachineStatus, Group } from '@/types';
+import { MachineStatus } from '@/types';
 import { Activity, AlertTriangle } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+interface Company {
+  id: string;
+  name: string;
+  cnpj: string;
+  logoUrl?: string;
+  dashboardToken: string;
+}
+
+interface Group {
+  id: string;
+  name: string;
+  expectedCyclesPerShift: number;
+  uptime: number;
+}
+
+interface Matrix {
+  id: string;
+  machineId: string;
+  matrixNumber: number;
+  status: string;
+}
+
+interface Machine {
+  id: string;
+  name: string;
+  code: string;
+  groupId?: string;
+  numberOfMatrices: number;
+  status: MachineStatus;
+  currentOperatorId?: string;
+  uptime: number;
+  matrices: Matrix[];
+}
+
+interface DashboardData {
+  company: Company;
+  groups: Group[];
+  machines: Machine[];
+}
 
 const ControlDashboard = () => {
   const { token } = useParams<{ token: string }>();
-  const { machines, getMatricesByMachine } = useMachineStore();
-  const { getGroups } = useRegistrationStore();
 
-  // Mock: buscar empresa pelo token (em prod, seria uma API call)
-  const [company, setCompany] = useState<any>(null);
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  useEffect(() => {
-    // Simular busca da empresa pelo token
-    const mockCompanies = [
-      {
-        id: '1',
-        name: 'Empresa Demo LTDA',
-        dashboardToken: 'dash_1234567890_abc123def456',
-        logoUrl: '',
-      },
-    ];
-
-    const foundCompany = mockCompanies.find((c) => c.dashboardToken === token);
-    if (foundCompany) {
-      setCompany(foundCompany);
-      setGroups(getGroups(foundCompany.id));
+  // Load dashboard data from API
+  const loadDashboardData = async () => {
+    if (!token) {
+      setError('Token não fornecido');
+      setLoading(false);
+      return;
     }
-  }, [token, getGroups]);
 
-  // Atualizar tempo em tempo real a cada 1 segundo
+    try {
+      console.log('🔍 Loading dashboard data for token:', token);
+      const response = await fetch(`${API_URL}/control-dashboard/data/${token}`);
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Falha ao carregar dados do dashboard');
+      }
+
+      console.log('✅ Dashboard data loaded:', result.data);
+      setDashboardData(result.data);
+      setError(null);
+    } catch (err: any) {
+      console.error('❌ Error loading dashboard:', err);
+      setError(err.message || 'Erro ao carregar dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+
+    // Refresh data every 5 seconds
+    const dataInterval = setInterval(loadDashboardData, 5000);
+
+    return () => clearInterval(dataInterval);
+  }, [token]);
+
+  // Update current time every second
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date());
@@ -41,32 +98,6 @@ const ControlDashboard = () => {
 
     return () => clearInterval(interval);
   }, []);
-
-  const calculateMachineUptime = (machine: Machine) => {
-    // Calcular uptime do dia (mock - em prod seria baseado em logs reais)
-    // Simular tempo operante baseado no status atual
-    let uptimePercentage = 0;
-    if (machine.status === MachineStatus.NORMAL_RUNNING) {
-      uptimePercentage = 75 + Math.random() * 20; // 75-95%
-    } else if (machine.status === MachineStatus.STOPPED) {
-      uptimePercentage = 40 + Math.random() * 30; // 40-70%
-    } else {
-      uptimePercentage = 10 + Math.random() * 20; // 10-30%
-    }
-
-    return Math.min(100, Math.round(uptimePercentage));
-  };
-
-  const calculateGroupUptime = (groupId: string) => {
-    const groupMachines = machines.filter((m) => m.groupId === groupId);
-    if (groupMachines.length === 0) return 0;
-
-    const totalUptime = groupMachines.reduce(
-      (sum, machine) => sum + calculateMachineUptime(machine),
-      0
-    );
-    return Math.round(totalUptime / groupMachines.length);
-  };
 
   const getMachineStatusColor = (status: MachineStatus) => {
     switch (status) {
@@ -98,13 +129,30 @@ const ControlDashboard = () => {
     }
   };
 
-  if (!company) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-2xl">Dashboard não encontrado</div>
+        <div className="text-white text-2xl">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
+          Carregando dashboard...
+        </div>
       </div>
     );
   }
+
+  if (error || !dashboardData) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <AlertTriangle className="w-20 h-20 text-red-500 mx-auto mb-4" />
+          <div className="text-2xl mb-2">Dashboard não encontrado</div>
+          <div className="text-gray-400">{error || 'Token inválido'}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const { company, groups, machines } = dashboardData;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
@@ -143,7 +191,6 @@ const ControlDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {groups.map((group) => {
               const groupMachines = machines.filter((m) => m.groupId === group.id);
-              const uptime = calculateGroupUptime(group.id);
               const hasEmergency = groupMachines.some(
                 (m) => m.status === MachineStatus.EMERGENCY
               );
@@ -163,18 +210,18 @@ const ControlDashboard = () => {
                   <div className="mb-4">
                     <div className="flex justify-between mb-2">
                       <span className="text-gray-400">Operação Hoje</span>
-                      <span className="text-3xl font-bold">{uptime}%</span>
+                      <span className="text-3xl font-bold">{group.uptime}%</span>
                     </div>
                     <div className="w-full bg-gray-700 rounded-full h-6">
                       <div
                         className={`h-6 rounded-full transition-all duration-500 ${
-                          uptime >= 80
+                          group.uptime >= 80
                             ? 'bg-green-500'
-                            : uptime >= 50
+                            : group.uptime >= 50
                             ? 'bg-yellow-500'
                             : 'bg-red-500'
                         }`}
-                        style={{ width: `${uptime}%` }}
+                        style={{ width: `${group.uptime}%` }}
                       />
                     </div>
                   </div>
@@ -198,10 +245,8 @@ const ControlDashboard = () => {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {machines.map((machine) => {
-            const uptime = calculateMachineUptime(machine);
             const isEmergency = machine.status === MachineStatus.EMERGENCY;
-            const matrices = getMatricesByMachine(machine.id);
-            const runningMatrices = matrices.filter((m) => m.status === 'RUNNING').length;
+            const runningMatrices = machine.matrices.filter((m) => m.status === 'RUNNING').length;
 
             return (
               <div
@@ -227,12 +272,12 @@ const ControlDashboard = () => {
                 <div className="mb-4">
                   <div className="flex justify-between mb-2">
                     <span className="text-white opacity-90 text-sm">Operação Hoje</span>
-                    <span className="text-2xl font-bold">{uptime}%</span>
+                    <span className="text-2xl font-bold">{machine.uptime}%</span>
                   </div>
                   <div className="w-full bg-black bg-opacity-40 rounded-full h-4">
                     <div
                       className="bg-white bg-opacity-90 h-4 rounded-full transition-all duration-500"
-                      style={{ width: `${uptime}%` }}
+                      style={{ width: `${machine.uptime}%` }}
                     />
                   </div>
                 </div>

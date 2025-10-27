@@ -10,6 +10,7 @@ import productionRoutes from './production.routes';
 import analyticsRoutes from './analytics.routes';
 import auditRoutes from './audit.routes';
 import maintenanceRoutes from './maintenance.routes';
+import controlDashboardRoutes from './control-dashboard.routes';
 import supabase from '../config/supabase';
 
 const router = Router();
@@ -50,6 +51,9 @@ router.get('/test-db', async (_req, res) => {
     });
   }
 });
+
+// Public routes (no auth required)
+router.use('/control-dashboard', controlDashboardRoutes);
 
 // Routes
 router.use('/auth', authRoutes);
