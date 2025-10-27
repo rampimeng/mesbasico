@@ -103,7 +103,14 @@ const OperatorDashboard = () => {
 
   // Update today's cycles count when cycleLogs change
   useEffect(() => {
-    setTodayCycles(getTodayCycles(company?.id || '', user?.id));
+    console.log('🔄 Updating today cycles count...');
+    console.log('📦 Current cycleLogs:', cycleLogs);
+    console.log('📦 Company ID:', company?.id, 'User ID:', user?.id);
+
+    const count = getTodayCycles(company?.id || '', user?.id);
+    console.log('✅ Today cycles count:', count);
+
+    setTodayCycles(count);
   }, [cycleLogs, user, company, getTodayCycles]);
 
   // Fullscreen functions
@@ -239,12 +246,15 @@ const OperatorDashboard = () => {
   // Load total active time for today (accumulated from all sessions)
   const loadShiftStartTime = async () => {
     try {
+      console.log('🔄 Loading active time from API...');
       const data = await productionService.getTodayActiveTime();
+
+      console.log('📦 Received data from API:', data);
 
       setTotalActiveSeconds(data.totalActiveSeconds || 0);
       setCurrentSessionStart(data.currentSessionStart ? new Date(data.currentSessionStart) : null);
 
-      console.log('✅ Active time loaded:', {
+      console.log('✅ Active time loaded and state updated:', {
         totalActiveSeconds: data.totalActiveSeconds,
         currentSessionStart: data.currentSessionStart,
         sessionsCount: data.sessionsCount
@@ -280,9 +290,9 @@ const OperatorDashboard = () => {
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
 
-    setShiftDuration(
-      `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-    );
+    const formatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+    setShiftDuration(formatted);
   }, [totalActiveSeconds, currentSessionStart, currentTime]);
 
   // Format current time for São Paulo timezone
