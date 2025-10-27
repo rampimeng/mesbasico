@@ -203,23 +203,28 @@ const OperatorMirrorView = ({
       let errorCount = 0;
 
       for (const machine of operatorMachines) {
-        if (machine.status !== MachineStatus.IDLE && machine.status !== MachineStatus.STOPPED) {
+        if (machine.status !== MachineStatus.IDLE) {
           try {
-            await updateMachineStatus(machine.id, MachineStatus.STOPPED, operatorId, shiftEndReasonId);
+            // First stop the machine with "Turno Encerrado" reason
+            if (machine.status !== MachineStatus.STOPPED) {
+              await updateMachineStatus(machine.id, MachineStatus.STOPPED, operatorId, shiftEndReasonId);
+            }
+            // Then end the production session
+            await productionService.endSession(machine.id, operatorId);
             successCount++;
           } catch (error: any) {
             errorCount++;
-            showNotification(`Erro ao parar máquina ${machine.name}: ${error.message}`, 'error');
+            showNotification(`Erro ao encerrar sessão da máquina ${machine.name}: ${error.message}`, 'error');
           }
         }
       }
 
       if (successCount > 0) {
-        showNotification(`Turno encerrado! ${successCount} máquina(s) parada(s).`, 'success');
+        showNotification(`Turno encerrado! ${successCount} sessão(ões) encerrada(s).`, 'success');
       }
 
       if (errorCount > 0) {
-        showNotification(`${errorCount} máquina(s) falharam ao parar.`, 'error');
+        showNotification(`${errorCount} sessão(ões) falharam ao encerrar.`, 'error');
       }
 
       setShiftStartTime(null);

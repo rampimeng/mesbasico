@@ -348,21 +348,26 @@ const OperatorDashboard = () => {
       const shiftEndReasonId = await productionService.getShiftEndReasonId();
       console.log('📋 Using shift end reason ID:', shiftEndReasonId);
 
-      // Parar todas as máquinas ativas com o motivo "Turno Encerrado"
+      // Encerrar sessões de produção de todas as máquinas ativas
       let successCount = 0;
       let errorCount = 0;
 
       for (const machine of machines) {
-        if (machine.status !== MachineStatus.IDLE && machine.status !== MachineStatus.STOPPED) {
-          console.log(`🛑 Stopping machine ${machine.name} with reason "Turno Encerrado"`);
+        if (machine.status !== MachineStatus.IDLE) {
+          console.log(`🛑 Ending session for machine ${machine.name}`);
           try {
-            await updateMachineStatus(machine.id, MachineStatus.STOPPED, user.id, shiftEndReasonId);
+            // First stop the machine with "Turno Encerrado" reason
+            if (machine.status !== MachineStatus.STOPPED) {
+              await updateMachineStatus(machine.id, MachineStatus.STOPPED, user.id, shiftEndReasonId);
+            }
+            // Then end the production session
+            await productionService.endSession(machine.id);
             successCount++;
-            console.log(`✅ Machine ${machine.name} stopped successfully`);
+            console.log(`✅ Session for machine ${machine.name} ended successfully`);
           } catch (error: any) {
             errorCount++;
-            console.error(`❌ Error stopping machine ${machine.name}:`, error);
-            showNotification(`Erro ao parar máquina ${machine.name}: ${error.message}`, 'error');
+            console.error(`❌ Error ending session for machine ${machine.name}:`, error);
+            showNotification(`Erro ao encerrar sessão da máquina ${machine.name}: ${error.message}`, 'error');
           }
         }
       }
