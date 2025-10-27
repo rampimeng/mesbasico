@@ -59,7 +59,13 @@ const OperatorDashboard = () => {
     loadMyMachines();
     loadStopReasons();
     loadShiftStartTime();
-    loadCycleLogs(); // Load cycle logs from backend for today's count
+
+    // Load today's cycle logs with date filter
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    loadCycleLogs({
+      startDate: today.toISOString()
+    });
 
     // Enable fullscreen on mount
     enableFullscreen();
@@ -68,13 +74,29 @@ const OperatorDashboard = () => {
     requestWakeLock();
 
     // Set up polling to refresh data every 1 second for real-time sync
-    const interval = setInterval(() => {
+    const machineInterval = setInterval(() => {
       loadMyMachines();
     }, 1000);
 
+    // Poll accumulated time every 5 seconds
+    const timeInterval = setInterval(() => {
+      loadShiftStartTime();
+    }, 5000);
+
+    // Poll cycle logs every 5 seconds
+    const cycleInterval = setInterval(() => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      loadCycleLogs({
+        startDate: today.toISOString()
+      });
+    }, 5000);
+
     // Cleanup on unmount
     return () => {
-      clearInterval(interval);
+      clearInterval(machineInterval);
+      clearInterval(timeInterval);
+      clearInterval(cycleInterval);
       releaseWakeLock();
     };
   }, [loadMyMachines, loadStopReasons, loadCycleLogs]);
