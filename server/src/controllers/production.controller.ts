@@ -640,18 +640,16 @@ export const getTodayActiveTime = async (req: Request, res: Response) => {
   try {
     const { companyId, id: userId } = req.user!;
 
-    // Get today's date range in São Paulo timezone
+    // Get today's date range - simplified approach
+    // Get start of today in UTC (00:00:00 today in user's timezone might be yesterday in UTC)
     const now = new Date();
-    const saoPauloOffset = -3 * 60; // UTC-3 in minutes
-    const localOffset = now.getTimezoneOffset();
-    const saoPauloTime = new Date(now.getTime() + (localOffset + saoPauloOffset) * 60000);
 
-    // Start of today in São Paulo
-    const startOfDay = new Date(saoPauloTime);
+    // Get start of day (last 24 hours for simplicity)
+    const startOfDay = new Date(now);
     startOfDay.setHours(0, 0, 0, 0);
 
-    // End of today in São Paulo
-    const endOfDay = new Date(saoPauloTime);
+    // Get end of day
+    const endOfDay = new Date(now);
     endOfDay.setHours(23, 59, 59, 999);
 
     console.log('⏱️ Fetching total active time for today:', {
