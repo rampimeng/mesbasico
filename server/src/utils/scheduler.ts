@@ -98,6 +98,23 @@ export const initializeScheduler = () => {
             console.error(`❌ Error updating machine ${session.machineId}:`, machineError);
           }
 
+          // 4. Stop all matrices for this machine
+          const { data: matrices, error: matricesError } = await supabase
+            .from('matrices')
+            .update({
+              status: 'STOPPED',
+              updatedAt: now,
+            })
+            .eq('machineId', session.machineId)
+            .eq('companyId', session.companyId)
+            .select();
+
+          if (matricesError) {
+            console.error(`❌ Error stopping matrices for machine ${session.machineId}:`, matricesError);
+          } else {
+            console.log(`✅ Stopped ${matrices?.length || 0} matrices for machine ${session.machineId}`);
+          }
+
           closedCount++;
           console.log(`✅ Closed session ${session.id} for machine ${session.machineId}`);
         } catch (error: any) {

@@ -72,11 +72,18 @@ export const startSession = async (req: Request, res: Response) => {
     }
 
     // Start all matrices for this machine
-    const { data: matrices } = await supabase
+    console.log(`🔍 Fetching matrices for machineId=${machineId}, companyId=${companyId}`);
+    const { data: matrices, error: matricesError } = await supabase
       .from('matrices')
       .select('id')
       .eq('machineId', machineId)
       .eq('companyId', companyId);
+
+    if (matricesError) {
+      console.error('❌ Error fetching matrices:', matricesError);
+    }
+
+    console.log(`📊 Query result: Found ${matrices?.length || 0} matrices`);
 
     if (matrices && matrices.length > 0) {
       console.log(`🔢 Starting ${matrices.length} matrices for machine ${machineId}`);
@@ -92,10 +99,14 @@ export const startSession = async (req: Request, res: Response) => {
 
         if (matrixError) {
           console.error(`❌ Error starting matrix ${matrix.id}:`, matrixError);
+        } else {
+          console.log(`✅ Matrix ${matrix.id} started successfully`);
         }
       }
 
       console.log(`✅ Started ${matrices.length} matrices`);
+    } else {
+      console.log(`⚠️ No matrices found for machine ${machineId} - skipping matrix initialization`);
     }
 
     console.log('✅ Session started successfully:', session.id);
@@ -620,6 +631,24 @@ export const endSession = async (req: Request, res: Response) => {
       console.error('❌ Error updating machine:', machineError);
     }
 
+    // Stop all matrices for this machine
+    console.log(`🔍 Stopping matrices for machineId=${machineId}`);
+    const { data: matrices, error: matricesStopError } = await supabase
+      .from('matrices')
+      .update({
+        status: 'STOPPED',
+        updatedAt: new Date().toISOString(),
+      })
+      .eq('machineId', machineId)
+      .eq('companyId', companyId)
+      .select();
+
+    if (matricesStopError) {
+      console.error('❌ Error stopping matrices:', matricesStopError);
+    } else {
+      console.log(`✅ Stopped ${matrices?.length || 0} matrices for machine ${machineId}`);
+    }
+
     console.log('✅ Session ended successfully');
 
     res.json({
@@ -824,6 +853,23 @@ export const closeAllActiveSessions = async (req: Request, res: Response) => {
 
         if (machineError) {
           console.error(`❌ Error updating machine ${session.machineId}:`, machineError);
+        }
+
+        // 4. Stop all matrices for this machine
+        const { data: matrices, error: matricesError } = await supabase
+          .from('matrices')
+          .update({
+            status: 'STOPPED',
+            updatedAt: now,
+          })
+          .eq('machineId', session.machineId)
+          .eq('companyId', session.companyId)
+          .select();
+
+        if (matricesError) {
+          console.error(`❌ Error stopping matrices for machine ${session.machineId}:`, matricesError);
+        } else {
+          console.log(`✅ Stopped ${matrices?.length || 0} matrices for machine ${session.machineId}`);
         }
 
         closedCount++;
