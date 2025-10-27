@@ -72,12 +72,11 @@ export const startSession = async (req: Request, res: Response) => {
     }
 
     // Start all matrices for this machine
-    console.log(`🔍 Fetching matrices for machineId=${machineId}, companyId=${companyId}`);
+    console.log(`🔍 Fetching matrices for machineId=${machineId}`);
     const { data: matrices, error: matricesError } = await supabase
       .from('matrices')
       .select('id')
-      .eq('machineId', machineId)
-      .eq('companyId', companyId);
+      .eq('machineId', machineId);
 
     if (matricesError) {
       console.error('❌ Error fetching matrices:', matricesError);
@@ -640,7 +639,6 @@ export const endSession = async (req: Request, res: Response) => {
         updatedAt: new Date().toISOString(),
       })
       .eq('machineId', machineId)
-      .eq('companyId', companyId)
       .select();
 
     if (matricesStopError) {
@@ -863,7 +861,6 @@ export const closeAllActiveSessions = async (req: Request, res: Response) => {
             updatedAt: now,
           })
           .eq('machineId', session.machineId)
-          .eq('companyId', session.companyId)
           .select();
 
         if (matricesError) {

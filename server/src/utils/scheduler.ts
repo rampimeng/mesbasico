@@ -106,7 +106,6 @@ export const initializeScheduler = () => {
               updatedAt: now,
             })
             .eq('machineId', session.machineId)
-            .eq('companyId', session.companyId)
             .select();
 
           if (matricesError) {
