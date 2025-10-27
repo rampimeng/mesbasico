@@ -648,14 +648,18 @@ export const getMachineActiveTime = async (req: Request, res: Response) => {
 
     console.log('⏱️ Fetching machine active time:', { machineId, startOfDay: startOfDay.toISOString() });
 
-    // Get all time logs for this machine today with status NORMAL_RUNNING
+    // Get recent time logs (last 2 days) to catch logs that started yesterday and are still active
+    const twoDaysAgo = new Date(startOfDay);
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
     const { data: logs, error } = await supabase
       .from('time_logs')
       .select('startedAt, endedAt, durationSeconds')
       .eq('companyId', companyId)
       .eq('machineId', machineId)
       .eq('status', 'NORMAL_RUNNING')
-      .gte('startedAt', startOfDay.toISOString());
+      .gte('startedAt', twoDaysAgo.toISOString())
+      .order('startedAt', { ascending: true });
 
     if (error) {
       console.error('❌ Error fetching machine time logs:', error);
@@ -670,14 +674,48 @@ export const getMachineActiveTime = async (req: Request, res: Response) => {
 
     if (logs && logs.length > 0) {
       for (const log of logs) {
+        const logStart = new Date(log.startedAt);
+
+        // Skip logs that don't overlap with today
         if (log.endedAt) {
-          // Completed log - use stored duration
-          totalActiveSeconds += log.durationSeconds || 0;
+          const logEnd = new Date(log.endedAt);
+          // If log ended before today started, skip it
+          if (logEnd < startOfDay) {
+            continue;
+          }
+        }
+        // If log started after today, skip it (shouldn't happen with our query)
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (logStart > endOfDay) {
+          continue;
+        }
+
+        if (log.endedAt) {
+          // Completed log - calculate time within today
+          const logEnd = new Date(log.endedAt);
+
+          // Determine the effective start (max of log start and start of day)
+          const effectiveStart = logStart < startOfDay ? startOfDay : logStart;
+
+          // Determine the effective end (min of log end and end of day)
+          const effectiveEnd = logEnd > endOfDay ? endOfDay : logEnd;
+
+          // Calculate duration within today
+          const durationMs = effectiveEnd.getTime() - effectiveStart.getTime();
+          const durationSeconds = Math.floor(durationMs / 1000);
+
+          if (durationSeconds > 0) {
+            totalActiveSeconds += durationSeconds;
+          }
+
+          console.log(`📊 Completed log: start=${logStart.toISOString()}, end=${logEnd.toISOString()}, effectiveStart=${effectiveStart.toISOString()}, effectiveEnd=${effectiveEnd.toISOString()}, duration=${durationSeconds}s`);
         } else {
-          // Active log - just save the start time (frontend will calculate current duration)
-          const start = new Date(log.startedAt);
-          currentRunStart = start;
-          // Do NOT add to totalActiveSeconds - let frontend calculate the live time
+          // Active log - determine when it started counting for today
+          // If it started before today, use start of today as the effective start
+          currentRunStart = logStart < startOfDay ? startOfDay : logStart;
+
+          console.log(`📊 Active log: start=${logStart.toISOString()}, effectiveStart=${currentRunStart.toISOString()}`);
         }
       }
     }
