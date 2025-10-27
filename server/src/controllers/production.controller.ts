@@ -71,6 +71,33 @@ export const startSession = async (req: Request, res: Response) => {
       console.error('❌ Error creating time log:', logError);
     }
 
+    // Start all matrices for this machine
+    const { data: matrices } = await supabase
+      .from('matrices')
+      .select('id')
+      .eq('machineId', machineId)
+      .eq('companyId', companyId);
+
+    if (matrices && matrices.length > 0) {
+      console.log(`🔢 Starting ${matrices.length} matrices for machine ${machineId}`);
+
+      for (const matrix of matrices) {
+        const { error: matrixError } = await supabase
+          .from('matrices')
+          .update({
+            status: 'RUNNING',
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', matrix.id);
+
+        if (matrixError) {
+          console.error(`❌ Error starting matrix ${matrix.id}:`, matrixError);
+        }
+      }
+
+      console.log(`✅ Started ${matrices.length} matrices`);
+    }
+
     console.log('✅ Session started successfully:', session.id);
 
     res.status(201).json({

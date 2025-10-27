@@ -129,16 +129,36 @@ const MachineCard = ({ machine }: MachineCardProps) => {
   };
 
   const handleToggleMatrix = (matrixIndex: number) => {
+    console.log('🔘 handleToggleMatrix called:', {
+      matrixIndex,
+      machineStatus: machine.status,
+      machineId: machine.id,
+      matricesLength: matrices.length,
+    });
+
     const matrix = matrices[matrixIndex];
-    if (!matrix) return;
+
+    if (!matrix) {
+      console.error('❌ Matrix not found at index:', matrixIndex, 'Available matrices:', matrices);
+      return;
+    }
+
+    console.log('📋 Matrix details:', {
+      id: matrix.id,
+      number: matrix.matrixNumber,
+      status: matrix.status,
+    });
 
     if (matrix.status === MatrixStatus.STOPPED) {
       // Iniciar matriz
+      console.log('▶️ Starting matrix:', matrix.id);
       updateMatrixStatus(matrix.id, MatrixStatus.RUNNING);
     } else {
       // Parar matriz - abrir modal de motivo
+      console.log('⏸️ Opening stop modal for matrix:', matrix.id);
       setStopTarget(matrixIndex);
       setShowStopModal(true);
+      console.log('Modal state updated:', { stopTarget: matrixIndex, showStopModal: true });
     }
   };
 
@@ -216,24 +236,37 @@ const MachineCard = ({ machine }: MachineCardProps) => {
           <div>
             <p className="text-[10px] lg:text-sm font-semibold text-gray-700 mb-1">Matrizes:</p>
             <div className="grid grid-cols-4 gap-1 lg:gap-2">
-              {matrices.map((matrix, index) => (
-                <button
-                  key={matrix.id}
-                  onClick={() => handleToggleMatrix(index)}
-                  disabled={machine.status === MachineStatus.IDLE}
-                  className={`
-                    aspect-square rounded font-bold text-sm lg:text-xl transition-all
-                    disabled:opacity-50 disabled:cursor-not-allowed
-                    ${
-                      matrix.status === MatrixStatus.RUNNING
-                        ? 'bg-green-500 hover:bg-green-600 text-white'
-                        : 'bg-red-500 hover:bg-red-600 text-white'
-                    }
-                  `}
-                >
-                  {matrix.matrixNumber}
-                </button>
-              ))}
+              {matrices.map((matrix, index) => {
+                const isDisabled = machine.status === MachineStatus.IDLE;
+                console.log(`🔘 Matrix ${matrix.matrixNumber}:`, {
+                  id: matrix.id,
+                  status: matrix.status,
+                  machineStatus: machine.status,
+                  isDisabled,
+                });
+
+                return (
+                  <button
+                    key={matrix.id}
+                    onClick={() => {
+                      console.log(`🖱️ Matrix ${matrix.matrixNumber} clicked! isDisabled=${isDisabled}`);
+                      handleToggleMatrix(index);
+                    }}
+                    disabled={isDisabled}
+                    className={`
+                      aspect-square rounded font-bold text-sm lg:text-xl transition-all
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                      ${
+                        matrix.status === MatrixStatus.RUNNING
+                          ? 'bg-green-500 hover:bg-green-600 text-white'
+                          : 'bg-red-500 hover:bg-red-600 text-white'
+                      }
+                    `}
+                  >
+                    {matrix.matrixNumber}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
