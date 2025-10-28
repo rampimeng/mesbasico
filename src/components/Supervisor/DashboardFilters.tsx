@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { DashboardFilters as FilterType } from '@/types';
 import { filtersService } from '@/services/filtersService';
 
@@ -35,6 +35,58 @@ const DashboardFilters = ({ filters, onChange }: DashboardFiltersProps) => {
       setLoading(false);
     }
   };
+
+  // Filtrar máquinas baseado no grupo selecionado
+  const filteredMachines = useMemo(() => {
+    const selectedGroupId = filters.groupIds?.[0];
+    if (!selectedGroupId) {
+      return machines; // Se nenhum grupo selecionado, mostrar todas
+    }
+    return machines.filter(machine => machine.groupId === selectedGroupId);
+  }, [machines, filters.groupIds]);
+
+  // Filtrar operadores baseado no grupo selecionado
+  const filteredOperators = useMemo(() => {
+    const selectedGroupId = filters.groupIds?.[0];
+    if (!selectedGroupId) {
+      return operators; // Se nenhum grupo selecionado, mostrar todos
+    }
+    return operators.filter(operator =>
+      operator.groupIds && operator.groupIds.includes(selectedGroupId)
+    );
+  }, [operators, filters.groupIds]);
+
+  // Quando o grupo muda, resetar máquina e operador se não estiverem mais disponíveis
+  useEffect(() => {
+    const selectedGroupId = filters.groupIds?.[0];
+    const selectedMachineId = filters.machineIds?.[0];
+    const selectedOperatorId = filters.operatorIds?.[0];
+
+    // Se não há grupo selecionado, não precisa fazer nada
+    if (!selectedGroupId) {
+      return;
+    }
+
+    let needsUpdate = false;
+    const newFilters = { ...filters };
+
+    // Verificar se a máquina selecionada ainda está na lista filtrada
+    if (selectedMachineId && !filteredMachines.find(m => m.id === selectedMachineId)) {
+      newFilters.machineIds = [];
+      needsUpdate = true;
+    }
+
+    // Verificar se o operador selecionado ainda está na lista filtrada
+    if (selectedOperatorId && !filteredOperators.find(o => o.id === selectedOperatorId)) {
+      newFilters.operatorIds = [];
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      onChange(newFilters);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.groupIds]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -98,12 +150,15 @@ const DashboardFilters = ({ filters, onChange }: DashboardFiltersProps) => {
           disabled={loading}
         >
           <option value="">Todas</option>
-          {machines.map((machine) => (
+          {filteredMachines.map((machine) => (
             <option key={machine.id} value={machine.id}>
               {machine.name} ({machine.code})
             </option>
           ))}
         </select>
+        {filters.groupIds && filters.groupIds.length > 0 && filteredMachines.length === 0 && (
+          <p className="text-xs text-gray-500 mt-1">Nenhuma máquina vinculada a esta célula</p>
+        )}
       </div>
 
       <div>
@@ -120,12 +175,15 @@ const DashboardFilters = ({ filters, onChange }: DashboardFiltersProps) => {
           disabled={loading}
         >
           <option value="">Todos</option>
-          {operators.map((operator) => (
+          {filteredOperators.map((operator) => (
             <option key={operator.id} value={operator.id}>
               {operator.name}
             </option>
           ))}
         </select>
+        {filters.groupIds && filters.groupIds.length > 0 && filteredOperators.length === 0 && (
+          <p className="text-xs text-gray-500 mt-1">Nenhum operador vinculado a esta célula</p>
+        )}
       </div>
     </div>
   );
