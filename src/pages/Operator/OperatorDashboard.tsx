@@ -14,12 +14,19 @@ const OperatorDashboard = () => {
   const { user, company, logout } = useAuthStore();
   const { machines, loadMyMachines, updateMachineStatus, startSession, isMachineInUse } = useMachineStore();
   const { getTodayCycles, loadCycleLogs, cycleLogs } = useAuditStore();
-  const { loadStopReasons } = useRegistrationStore();
+  const { loadStopReasons, stopReasons } = useRegistrationStore();
 
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [showConfirmEndShiftModal, setShowConfirmEndShiftModal] = useState(false);
   const [blockedMessage, setBlockedMessage] = useState('');
   const [todayCycles, setTodayCycles] = useState(getTodayCycles(company?.id || '', user?.id));
+
+  // General pause state
+  const [generalPause, setGeneralPause] = useState<{
+    reasonId: string;
+    reasonName: string;
+    startTime: Date;
+  } | null>(null);
 
   // Session timer states (time since screen opened)
   const [sessionStartTime] = useState<Date>(new Date()); // Fixed at mount time
@@ -262,6 +269,21 @@ const OperatorDashboard = () => {
     });
   };
 
+  // Calculate general pause duration
+  const formatPauseDuration = () => {
+    if (!generalPause) return '00:00:00';
+
+    const now = currentTime.getTime();
+    const start = generalPause.startTime.getTime();
+    const diffSeconds = Math.floor((now - start) / 1000);
+
+    const hours = Math.floor(diffSeconds / 3600);
+    const minutes = Math.floor((diffSeconds % 3600) / 60);
+    const seconds = diffSeconds % 60;
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
+
   const handleStartShift = async () => {
     try {
       if (!user) {
@@ -330,6 +352,9 @@ const OperatorDashboard = () => {
       if (errorCount > 0) {
         showNotification(`${errorCount} máquina(s) falharam ao iniciar.`, 'error');
       }
+
+      // Clear general pause when starting shift
+      setGeneralPause(null);
 
       // No need to reload - session time is independent
 
@@ -404,6 +429,17 @@ const OperatorDashboard = () => {
     if (!user) return;
 
     console.log('⏸️ Pause all confirmed with reason:', reasonId);
+
+    // Find reason name
+    const reason = stopReasons.find(r => r.id === reasonId);
+    const reasonName = reason?.name || 'Motivo desconhecido';
+
+    // Set general pause state
+    setGeneralPause({
+      reasonId,
+      reasonName,
+      startTime: new Date(),
+    });
 
     // Parar todas as máquinas com status STOPPED
     for (const machine of machines) {
@@ -512,6 +548,20 @@ const OperatorDashboard = () => {
                   </div>
                 </div>
               </div>
+
+              {/* General Pause Card - Only shows when there's an active general pause */}
+              {generalPause && (
+                <div className="bg-orange-50 px-4 py-2 rounded-lg border-2 border-orange-400 animate-pulse">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-orange-600" />
+                    <div>
+                      <p className="text-xs text-orange-600 font-semibold">Pausa Geral</p>
+                      <p className="text-sm font-bold text-orange-800">{generalPause.reasonName}</p>
+                      <p className="text-lg font-bold text-orange-700 tabular-nums">{formatPauseDuration()}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Current Time */}
               <div className="bg-green-50 px-4 py-2 rounded-lg border-2 border-green-300">
