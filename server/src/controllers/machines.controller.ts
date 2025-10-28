@@ -244,6 +244,24 @@ export const updateMachine = async (req: Request, res: Response) => {
     const { companyId } = req.user!;
     const { name, code, groupId, numberOfMatrices, standardCycleTime, status } = req.body;
 
+    console.log('🔄 Updating machine:', { id, companyId, numberOfMatrices });
+
+    // Get current machine state to compare numberOfMatrices
+    const { data: currentMachine, error: fetchError } = await supabase
+      .from('machines')
+      .select('id, numberOfMatrices')
+      .eq('id', id)
+      .eq('companyId', companyId)
+      .single();
+
+    if (fetchError || !currentMachine) {
+      console.error('❌ Machine not found:', fetchError);
+      return res.status(404).json({
+        success: false,
+        error: 'Machine not found',
+      });
+    }
+
     const updateData: any = {
       updatedAt: new Date().toISOString(),
     };
@@ -264,10 +282,75 @@ export const updateMachine = async (req: Request, res: Response) => {
       .single();
 
     if (error) {
+      console.error('❌ Error updating machine:', error);
       return res.status(400).json({
         success: false,
         error: error.message,
       });
+    }
+
+    console.log('✅ Machine updated successfully');
+
+    // If numberOfMatrices changed, adjust matrices in database
+    if (numberOfMatrices !== undefined && numberOfMatrices !== currentMachine.numberOfMatrices) {
+      console.log(`🔢 Number of matrices changed from ${currentMachine.numberOfMatrices} to ${numberOfMatrices}`);
+
+      // Get existing matrices
+      const { data: existingMatrices, error: matricesError } = await supabase
+        .from('matrices')
+        .select('id, matrixNumber')
+        .eq('machineId', id)
+        .order('matrixNumber', { ascending: true });
+
+      if (matricesError) {
+        console.error('❌ Error fetching existing matrices:', matricesError);
+      } else {
+        const existingCount = existingMatrices?.length || 0;
+        console.log(`📊 Current matrices in DB: ${existingCount}, Target: ${numberOfMatrices}`);
+
+        if (numberOfMatrices > existingCount) {
+          // Create new matrices
+          const matricesToCreate = [];
+          for (let i = existingCount + 1; i <= numberOfMatrices; i++) {
+            matricesToCreate.push({
+              machineId: id,
+              matrixNumber: i,
+              status: 'STOPPED',
+            });
+          }
+
+          console.log(`➕ Creating ${matricesToCreate.length} new matrices`);
+          const { data: newMatrices, error: createError } = await supabase
+            .from('matrices')
+            .insert(matricesToCreate)
+            .select();
+
+          if (createError) {
+            console.error('❌ Error creating new matrices:', createError);
+          } else {
+            console.log(`✅ Created ${newMatrices?.length || 0} new matrices`);
+          }
+        } else if (numberOfMatrices < existingCount) {
+          // Delete excess matrices (highest numbers first)
+          const matricesToDelete = existingMatrices
+            .filter((m: any) => m.matrixNumber > numberOfMatrices)
+            .map((m: any) => m.id);
+
+          if (matricesToDelete.length > 0) {
+            console.log(`➖ Deleting ${matricesToDelete.length} excess matrices`);
+            const { error: deleteError } = await supabase
+              .from('matrices')
+              .delete()
+              .in('id', matricesToDelete);
+
+            if (deleteError) {
+              console.error('❌ Error deleting excess matrices:', deleteError);
+            } else {
+              console.log(`✅ Deleted ${matricesToDelete.length} excess matrices`);
+            }
+          }
+        }
+      }
     }
 
     res.json({
@@ -276,6 +359,7 @@ export const updateMachine = async (req: Request, res: Response) => {
       message: 'Machine updated successfully',
     });
   } catch (error: any) {
+    console.error('❌ Unexpected error in updateMachine:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to update machine',
