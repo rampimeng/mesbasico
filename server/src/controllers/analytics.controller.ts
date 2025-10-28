@@ -24,15 +24,40 @@ export const getParetoData = async (req: Request, res: Response) => {
     if (endDate) {
       query = query.lte('startedAt', endDate as string);
     }
+
+    // Handle groupIds filter by fetching machines in those groups first
+    let machineIdsToFilter: string[] = [];
     if (groupIds && (groupIds as string).length > 0) {
       const groupIdArray = (groupIds as string).split(',');
-      // Need to join with machines to filter by groupId
-      // For now, we'll filter on frontend or use a different approach
+      const { data: groupMachines } = await supabase
+        .from('machines')
+        .select('id')
+        .eq('companyId', companyId)
+        .in('groupId', groupIdArray);
+
+      machineIdsToFilter = (groupMachines || []).map(m => m.id);
+      console.log(`🔍 Filtering by groups ${groupIdArray}: found ${machineIdsToFilter.length} machines`);
     }
+
+    // Apply machineIds filter (merge with groupIds filter if both exist)
     if (machineIds && (machineIds as string).length > 0) {
       const machineIdArray = (machineIds as string).split(',');
-      query = query.in('machineId', machineIdArray);
+      if (machineIdsToFilter.length > 0) {
+        // Intersect: only machines that are both in the group AND in the machineIds filter
+        machineIdsToFilter = machineIdsToFilter.filter(id => machineIdArray.includes(id));
+      } else {
+        machineIdsToFilter = machineIdArray;
+      }
     }
+
+    // Apply the final machine filter if we have any
+    if (machineIdsToFilter.length > 0) {
+      query = query.in('machineId', machineIdsToFilter);
+    } else if (groupIds && (groupIds as string).length > 0) {
+      // If groupIds was specified but no machines found, return empty
+      query = query.in('machineId', ['00000000-0000-0000-0000-000000000000']); // No matches
+    }
+
     if (operatorIds && (operatorIds as string).length > 0) {
       const operatorIdArray = (operatorIds as string).split(',');
       query = query.in('operatorId', operatorIdArray);
@@ -188,10 +213,38 @@ export const getTimeMetrics = async (req: Request, res: Response) => {
     if (endDate) {
       query = query.lte('startedAt', endDate as string);
     }
+
+    // Handle groupIds filter by fetching machines in those groups first
+    let machineIdsToFilter: string[] = [];
+    if (groupIds && (groupIds as string).length > 0) {
+      const groupIdArray = (groupIds as string).split(',');
+      const { data: groupMachines } = await supabase
+        .from('machines')
+        .select('id')
+        .eq('companyId', companyId)
+        .in('groupId', groupIdArray);
+
+      machineIdsToFilter = (groupMachines || []).map(m => m.id);
+      console.log(`🔍 [TimeMetrics] Filtering by groups ${groupIdArray}: found ${machineIdsToFilter.length} machines`);
+    }
+
+    // Apply machineIds filter (merge with groupIds filter if both exist)
     if (machineIds && (machineIds as string).length > 0) {
       const machineIdArray = (machineIds as string).split(',');
-      query = query.in('machineId', machineIdArray);
+      if (machineIdsToFilter.length > 0) {
+        machineIdsToFilter = machineIdsToFilter.filter(id => machineIdArray.includes(id));
+      } else {
+        machineIdsToFilter = machineIdArray;
+      }
     }
+
+    // Apply the final machine filter if we have any
+    if (machineIdsToFilter.length > 0) {
+      query = query.in('machineId', machineIdsToFilter);
+    } else if (groupIds && (groupIds as string).length > 0) {
+      query = query.in('machineId', ['00000000-0000-0000-0000-000000000000']);
+    }
+
     if (operatorIds && (operatorIds as string).length > 0) {
       const operatorIdArray = (operatorIds as string).split(',');
       query = query.in('operatorId', operatorIdArray);
@@ -344,7 +397,7 @@ export const getOEEDetailedData = async (req: Request, res: Response) => {
     const { companyId } = req.user!;
     const { startDate, endDate, groupIds, machineIds, operatorIds } = req.query;
 
-    console.log('📊 Fetching OEE detailed data:', { companyId, startDate, endDate });
+    console.log('📊 Fetching OEE detailed data:', { companyId, startDate, endDate, groupIds, machineIds, operatorIds });
 
     // Build query for time logs
     let query = supabase
@@ -359,10 +412,38 @@ export const getOEEDetailedData = async (req: Request, res: Response) => {
     if (endDate) {
       query = query.lte('startedAt', endDate as string);
     }
+
+    // Handle groupIds filter by fetching machines in those groups first
+    let machineIdsToFilter: string[] = [];
+    if (groupIds && (groupIds as string).length > 0) {
+      const groupIdArray = (groupIds as string).split(',');
+      const { data: groupMachines } = await supabase
+        .from('machines')
+        .select('id')
+        .eq('companyId', companyId)
+        .in('groupId', groupIdArray);
+
+      machineIdsToFilter = (groupMachines || []).map(m => m.id);
+      console.log(`🔍 [OEEDetailed] Filtering by groups ${groupIdArray}: found ${machineIdsToFilter.length} machines`);
+    }
+
+    // Apply machineIds filter (merge with groupIds filter if both exist)
     if (machineIds && (machineIds as string).length > 0) {
       const machineIdArray = (machineIds as string).split(',');
-      query = query.in('machineId', machineIdArray);
+      if (machineIdsToFilter.length > 0) {
+        machineIdsToFilter = machineIdsToFilter.filter(id => machineIdArray.includes(id));
+      } else {
+        machineIdsToFilter = machineIdArray;
+      }
     }
+
+    // Apply the final machine filter if we have any
+    if (machineIdsToFilter.length > 0) {
+      query = query.in('machineId', machineIdsToFilter);
+    } else if (groupIds && (groupIds as string).length > 0) {
+      query = query.in('machineId', ['00000000-0000-0000-0000-000000000000']);
+    }
+
     if (operatorIds && (operatorIds as string).length > 0) {
       const operatorIdArray = (operatorIds as string).split(',');
       query = query.in('operatorId', operatorIdArray);
@@ -573,10 +654,38 @@ export const getStopTimeByMachine = async (req: Request, res: Response) => {
     if (endDate) {
       query = query.lte('startedAt', endDate as string);
     }
+
+    // Handle groupIds filter by fetching machines in those groups first
+    let machineIdsToFilter: string[] = [];
+    if (groupIds && (groupIds as string).length > 0) {
+      const groupIdArray = (groupIds as string).split(',');
+      const { data: groupMachines } = await supabase
+        .from('machines')
+        .select('id')
+        .eq('companyId', companyId)
+        .in('groupId', groupIdArray);
+
+      machineIdsToFilter = (groupMachines || []).map(m => m.id);
+      console.log(`🔍 [StopTimeByMachine] Filtering by groups ${groupIdArray}: found ${machineIdsToFilter.length} machines`);
+    }
+
+    // Apply machineIds filter (merge with groupIds filter if both exist)
     if (machineIds && (machineIds as string).length > 0) {
       const machineIdArray = (machineIds as string).split(',');
-      query = query.in('machineId', machineIdArray);
+      if (machineIdsToFilter.length > 0) {
+        machineIdsToFilter = machineIdsToFilter.filter(id => machineIdArray.includes(id));
+      } else {
+        machineIdsToFilter = machineIdArray;
+      }
     }
+
+    // Apply the final machine filter if we have any
+    if (machineIdsToFilter.length > 0) {
+      query = query.in('machineId', machineIdsToFilter);
+    } else if (groupIds && (groupIds as string).length > 0) {
+      query = query.in('machineId', ['00000000-0000-0000-0000-000000000000']);
+    }
+
     if (operatorIds && (operatorIds as string).length > 0) {
       const operatorIdArray = (operatorIds as string).split(',');
       query = query.in('operatorId', operatorIdArray);
@@ -754,10 +863,38 @@ export const getCycleMetrics = async (req: Request, res: Response) => {
     if (endDate) {
       query = query.lte('cycleCompletedAt', endDate as string);
     }
+
+    // Handle groupIds filter by fetching machines in those groups first
+    let machineIdsToFilter: string[] = [];
+    if (groupIds && (groupIds as string).length > 0) {
+      const groupIdArray = (groupIds as string).split(',');
+      const { data: groupMachines } = await supabase
+        .from('machines')
+        .select('id')
+        .eq('companyId', companyId)
+        .in('groupId', groupIdArray);
+
+      machineIdsToFilter = (groupMachines || []).map(m => m.id);
+      console.log(`🔍 [CycleMetrics] Filtering by groups ${groupIdArray}: found ${machineIdsToFilter.length} machines`);
+    }
+
+    // Apply machineIds filter (merge with groupIds filter if both exist)
     if (machineIds && (machineIds as string).length > 0) {
       const machineIdArray = (machineIds as string).split(',');
-      query = query.in('machineId', machineIdArray);
+      if (machineIdsToFilter.length > 0) {
+        machineIdsToFilter = machineIdsToFilter.filter(id => machineIdArray.includes(id));
+      } else {
+        machineIdsToFilter = machineIdArray;
+      }
     }
+
+    // Apply the final machine filter if we have any
+    if (machineIdsToFilter.length > 0) {
+      query = query.in('machineId', machineIdsToFilter);
+    } else if (groupIds && (groupIds as string).length > 0) {
+      query = query.in('machineId', ['00000000-0000-0000-0000-000000000000']);
+    }
+
     if (operatorIds && (operatorIds as string).length > 0) {
       const operatorIdArray = (operatorIds as string).split(',');
       query = query.in('operatorId', operatorIdArray);
