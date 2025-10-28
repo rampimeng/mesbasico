@@ -690,9 +690,9 @@ export const endSession = async (req: Request, res: Response) => {
       console.log(`✅ No open time logs to close for machine ${machineId}`);
     }
 
-    // Create final time log with shift end reason if provided
+    // Create final time log with shift end reason if provided (leave it open to be closed on next shift start)
     if (stopReasonId) {
-      console.log(`📝 Creating final time log with shift end reason: ${stopReasonId}`);
+      console.log(`📝 Creating open time log with shift end reason: ${stopReasonId} (will be closed on next shift start)`);
       const { error: finalLogError } = await supabase
         .from('time_logs')
         .insert({
@@ -703,14 +703,13 @@ export const endSession = async (req: Request, res: Response) => {
           status: 'STOPPED',
           stopReasonId,
           startedAt: now.toISOString(),
-          endedAt: now.toISOString(),
-          durationSeconds: 0,
+          // Leave endedAt as null - will be closed when next shift starts
         });
 
       if (finalLogError) {
         console.error('❌ Error creating final time log:', finalLogError);
       } else {
-        console.log('✅ Final time log created with shift end reason');
+        console.log('✅ Final time log created (open) with shift end reason - will be closed on next shift start');
       }
     }
 
