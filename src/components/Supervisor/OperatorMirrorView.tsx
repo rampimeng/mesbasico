@@ -208,12 +208,9 @@ const OperatorMirrorView = ({
       for (const machine of operatorMachines) {
         if (machine.status !== MachineStatus.IDLE) {
           try {
-            // First stop the machine with "Turno Encerrado" reason
-            if (machine.status !== MachineStatus.STOPPED) {
-              await updateMachineStatus(machine.id, MachineStatus.STOPPED, operatorId, shiftEndReasonId);
-            }
-            // Then end the production session
-            await productionService.endSession(machine.id, operatorId);
+            // End the production session with shift end reason
+            // This will close all time logs, update machine to IDLE, and stop all matrices
+            await productionService.endSession(machine.id, operatorId, shiftEndReasonId);
             successCount++;
           } catch (error: any) {
             errorCount++;

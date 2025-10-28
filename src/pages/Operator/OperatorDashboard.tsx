@@ -363,12 +363,9 @@ const OperatorDashboard = () => {
         if (machine.status !== MachineStatus.IDLE) {
           console.log(`🛑 Ending session for machine ${machine.name}`);
           try {
-            // First stop the machine with "Turno Encerrado" reason
-            if (machine.status !== MachineStatus.STOPPED) {
-              await updateMachineStatus(machine.id, MachineStatus.STOPPED, user.id, shiftEndReasonId);
-            }
-            // Then end the production session
-            await productionService.endSession(machine.id, user.id);
+            // End the production session with shift end reason
+            // This will close all time logs, update machine to IDLE, and stop all matrices
+            await productionService.endSession(machine.id, user.id, shiftEndReasonId);
             successCount++;
             console.log(`✅ Session for machine ${machine.name} ended successfully`);
           } catch (error: any) {

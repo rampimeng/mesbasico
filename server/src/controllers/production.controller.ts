@@ -577,12 +577,12 @@ export const getOperatorShiftStart = async (req: Request, res: Response) => {
 export const endSession = async (req: Request, res: Response) => {
   try {
     const { companyId, id: userId } = req.user!;
-    const { machineId, operatorId } = req.body;
+    const { machineId, operatorId, stopReasonId } = req.body;
 
     // Use provided operatorId (for Admin/Supervisor monitoring) or logged-in userId (for Operator)
     const effectiveOperatorId = operatorId || userId;
 
-    console.log('🛑 Ending production session:', { machineId, effectiveOperatorId });
+    console.log('🛑 Ending production session:', { machineId, effectiveOperatorId, stopReasonId });
 
     if (!machineId) {
       return res.status(400).json({
@@ -604,6 +604,7 @@ export const endSession = async (req: Request, res: Response) => {
     const activeSession = sessions?.[0];
 
     if (!activeSession) {
+      console.error('❌ No active session found for machine:', machineId, 'operator:', effectiveOperatorId);
       return res.status(400).json({
         success: false,
         error: 'No active session found for this machine',
@@ -617,8 +618,9 @@ export const endSession = async (req: Request, res: Response) => {
       .eq('sessionId', activeSession.id)
       .is('endedAt', null);
 
+    const now = new Date();
+
     if (openLogs && openLogs.length > 0) {
-      const now = new Date();
       console.log(`🔄 Closing ${openLogs.length} open time log(s) for session ${activeSession.id} (shift end)`);
 
       for (const log of openLogs) {
@@ -634,6 +636,30 @@ export const endSession = async (req: Request, res: Response) => {
           .eq('id', log.id);
 
         console.log(`✅ Closed time log ${log.id} - Status: ${log.status}, Matrix: ${log.matrixId || 'N/A'}, Duration: ${durationSeconds}s`);
+      }
+    }
+
+    // Create final time log with shift end reason if provided
+    if (stopReasonId) {
+      console.log(`📝 Creating final time log with shift end reason: ${stopReasonId}`);
+      const { error: finalLogError } = await supabase
+        .from('time_logs')
+        .insert({
+          companyId,
+          sessionId: activeSession.id,
+          machineId,
+          operatorId: effectiveOperatorId,
+          status: 'STOPPED',
+          stopReasonId,
+          startedAt: now.toISOString(),
+          endedAt: now.toISOString(),
+          durationSeconds: 0,
+        });
+
+      if (finalLogError) {
+        console.error('❌ Error creating final time log:', finalLogError);
+      } else {
+        console.log('✅ Final time log created with shift end reason');
       }
     }
 

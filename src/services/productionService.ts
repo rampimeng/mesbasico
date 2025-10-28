@@ -24,12 +24,12 @@ export const productionService = {
   },
 
   // End a production session
-  async endSession(machineId: string, operatorId?: string) {
-    console.log('🛑 Ending session for machine:', machineId, 'operatorId:', operatorId);
+  async endSession(machineId: string, operatorId?: string, stopReasonId?: string) {
+    console.log('🛑 Ending session for machine:', machineId, 'operatorId:', operatorId, 'stopReasonId:', stopReasonId);
     const response = await fetch(`${API_URL}/production/sessions/end`, {
       method: 'POST',
       headers: getAuthHeader(),
-      body: JSON.stringify({ machineId, operatorId }),
+      body: JSON.stringify({ machineId, operatorId, stopReasonId }),
     });
     const data = await response.json();
     console.log('📦 End session response:', { ok: response.ok, status: response.status, data });

@@ -110,10 +110,36 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
       // Call backend API - pass operatorId
       await productionService.updateMachineStatus(machineId, status, stopReasonId, operatorId);
 
-      // Reload machines from backend to get updated state
-      console.log('🔄 Reloading machines after status update...');
-      await get().loadMyMachines();
-      console.log('✅ Machines reloaded');
+      // Update local state
+      set((state) => ({
+        machines: state.machines.map((m) =>
+          m.id === machineId
+            ? {
+                ...m,
+                status,
+                currentOperatorId: status === MachineStatus.IDLE ? undefined : operatorId,
+                sessionStartedAt: status === MachineStatus.IDLE ? undefined : new Date(),
+              }
+            : m
+        ),
+      }));
+
+      // Update matrices status
+      if (status === MachineStatus.NORMAL_RUNNING || status === MachineStatus.EMERGENCY) {
+        const newMatrixStatus = status === MachineStatus.EMERGENCY ? MatrixStatus.STOPPED : MatrixStatus.RUNNING;
+        set((state) => ({
+          matrices: state.matrices.map((mat) =>
+            mat.machineId === machineId
+              ? {
+                  ...mat,
+                  status: newMatrixStatus,
+                  lastStatusChangeAt: new Date(),
+                  currentStopReasonId: status === MachineStatus.EMERGENCY ? mat.currentStopReasonId : undefined,
+                }
+              : mat
+          ),
+        }));
+      }
     } catch (error: any) {
       console.error('❌ Error updating machine status:', error);
       set({ error: error.message });
@@ -139,10 +165,19 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
         operatorId
       );
 
-      // Reload machines from backend to get updated state
-      console.log('🔄 Reloading machines after matrix status update...');
-      await get().loadMyMachines();
-      console.log('✅ Machines reloaded');
+      // Update local state
+      set((state) => ({
+        matrices: state.matrices.map((mat) =>
+          mat.id === matrixId
+            ? {
+                ...mat,
+                status,
+                currentStopReasonId: status === MatrixStatus.STOPPED ? stopReasonId : undefined,
+                lastStatusChangeAt: new Date(),
+              }
+            : mat
+        ),
+      }));
     } catch (error: any) {
       console.error('❌ Error updating matrix status:', error);
       set({ error: error.message });
