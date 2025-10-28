@@ -6,14 +6,22 @@ import bcrypt from 'bcrypt';
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     const { companyId } = req.user!;
+    const { role } = req.query; // Filtro opcional por role
 
-    console.log('📋 Fetching users for company:', companyId);
+    console.log('📋 Fetching users for company:', companyId, role ? `with role=${role}` : '');
 
-    const { data: users, error } = await supabase
+    // Build query
+    let query = supabase
       .from('users')
       .select('id, companyId, name, email, role, active, mfaEnabled, createdAt, updatedAt')
-      .eq('companyId', companyId)
-      .order('createdAt', { ascending: false });
+      .eq('companyId', companyId);
+
+    // Apply role filter if provided
+    if (role && typeof role === 'string') {
+      query = query.eq('role', role.toUpperCase());
+    }
+
+    const { data: users, error } = await query.order('createdAt', { ascending: false });
 
     if (error) {
       console.error('❌ Error fetching users:', error);

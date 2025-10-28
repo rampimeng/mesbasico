@@ -8,9 +8,15 @@ import * as XLSX from 'xlsx';
 
 const DashboardHome = () => {
   const [showFilters, setShowFilters] = useState(false);
+
+  // Inicializar com a data atual (início e fim do dia)
+  const today = new Date();
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+
   const [filters, setFilters] = useState<FilterType>({
-    startDate: new Date(new Date().setDate(new Date().getDate() - 7)),
-    endDate: new Date(),
+    startDate: startOfDay,
+    endDate: endOfDay,
     groupIds: [],
     machineIds: [],
     operatorIds: [],
