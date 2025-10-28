@@ -277,8 +277,13 @@ const ControlDashboard = () => {
           {machines.map((machine) => {
             const isEmergency = machine.status === MachineStatus.EMERGENCY;
             const hasMatrices = machine.numberOfMatrices > 0;
-            const runningMatrices = machine.matrices.filter((m) => m.status === 'RUNNING').length;
+            const runningMatrices = machine.matrices?.filter((m) => m.status === 'RUNNING').length || 0;
             const allMatricesRunning = hasMatrices && runningMatrices === machine.numberOfMatrices;
+
+            // Debug log for matrix counting
+            if (hasMatrices && machine.matrices) {
+              console.log(`🔢 Machine ${machine.name}: ${runningMatrices}/${machine.numberOfMatrices} matrices running`, machine.matrices);
+            }
 
             return (
               <div

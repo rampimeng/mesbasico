@@ -82,11 +82,19 @@ export const getDashboardData = async (req: Request, res: Response) => {
       .select('id, name, code, groupId, numberOfMatrices, status, currentOperatorId')
       .eq('companyId', companyId);
 
-    // Fetch matrices
-    const { data: matrices } = await supabase
+    // Fetch matrices (no companyId filter - matrices table doesn't have companyId column)
+    // We'll filter by machineId when building the response
+    const machineIds = (machines || []).map(m => m.id);
+    const { data: matrices, error: matricesError } = await supabase
       .from('matrices')
       .select('id, machineId, matrixNumber, status')
-      .eq('companyId', companyId);
+      .in('machineId', machineIds.length > 0 ? machineIds : ['']);
+
+    if (matricesError) {
+      console.error('❌ Error fetching matrices:', matricesError);
+    }
+
+    console.log(`📊 Fetched ${machines?.length || 0} machines and ${matrices?.length || 0} matrices`);
 
     // Calculate real uptime for today
     const today = new Date();
