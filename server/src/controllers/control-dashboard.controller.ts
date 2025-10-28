@@ -56,7 +56,7 @@ export const getDashboardData = async (req: Request, res: Response) => {
     // First, get the company
     const { data: company, error: companyError } = await supabase
       .from('companies')
-      .select('id, name')
+      .select('id, name, cnpj, logoUrl, dashboardToken')
       .eq('dashboardToken', token)
       .eq('active', true)
       .single();
