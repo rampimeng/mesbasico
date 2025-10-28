@@ -74,6 +74,7 @@ export interface Machine {
   standardCycleTime: number; // Tempo de ciclo padrão em segundos
   status: MachineStatus;
   currentOperatorId?: string; // Operador que está usando a máquina
+  active: boolean; // Máquina ativa ou inativa
   sessionStartedAt?: Date;
   createdAt: Date;
   updatedAt: Date;

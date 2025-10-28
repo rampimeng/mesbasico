@@ -21,6 +21,7 @@ const MachineFormModal = ({ machine, onClose }: MachineFormModalProps) => {
     groupId: machine?.groupId || '',
     numberOfMatrices: machine?.numberOfMatrices || 0,
     standardCycleTime: machine?.standardCycleTime || 60,
+    active: machine?.active !== undefined ? machine.active : true,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -35,6 +36,7 @@ const MachineFormModal = ({ machine, onClose }: MachineFormModalProps) => {
         groupId: machine.groupId || '',
         numberOfMatrices: machine.numberOfMatrices,
         standardCycleTime: machine.standardCycleTime,
+        active: machine.active !== undefined ? machine.active : true,
       });
     }
   }, [machine]);
@@ -147,6 +149,26 @@ const MachineFormModal = ({ machine, onClose }: MachineFormModalProps) => {
                 min="1" />
               {errors.standardCycleTime && <p className="mt-1 text-sm text-red-600">{errors.standardCycleTime}</p>}
             </div>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <label className="flex items-center justify-between cursor-pointer">
+              <div>
+                <span className="text-sm font-medium text-gray-700">Máquina Ativa</span>
+                <p className="text-sm text-gray-500 mt-1">
+                  Máquinas inativas não aparecem para operadores e não são contabilizadas em relatórios
+                </p>
+              </div>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={formData.active}
+                  onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-600"></div>
+              </div>
+            </label>
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

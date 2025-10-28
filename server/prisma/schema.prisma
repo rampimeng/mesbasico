@@ -159,6 +159,7 @@ model Machine {
   standardCycleTime Int // Em segundos
   status            MachineStatus @default(IDLE)
   currentOperatorId String?
+  active            Boolean       @default(true)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
@@ -171,6 +172,7 @@ model Machine {
   @@index([companyId])
   @@index([groupId])
   @@index([status])
+  @@index([active])
   @@map("machines")
 }
 

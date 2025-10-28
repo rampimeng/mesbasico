@@ -33,6 +33,7 @@ export const getParetoData = async (req: Request, res: Response) => {
         .from('machines')
         .select('id')
         .eq('companyId', companyId)
+        .eq('active', true)
         .in('groupId', groupIdArray);
 
       machineIdsToFilter = (groupMachines || []).map(m => m.id);
@@ -90,11 +91,12 @@ export const getParetoData = async (req: Request, res: Response) => {
     // Get unique machine IDs to fetch matrix counts
     const uniqueMachineIds = [...new Set((timeLogs || []).map(log => log.machineId))];
 
-    // Fetch machine data to get number of matrices
+    // Fetch machine data to get number of matrices (only active machines)
     const { data: machines, error: machinesError } = await supabase
       .from('machines')
       .select('id, name, numberOfMatrices')
       .eq('companyId', companyId)
+      .eq('active', true)
       .in('id', uniqueMachineIds);
 
     if (machinesError) {
@@ -222,6 +224,7 @@ export const getTimeMetrics = async (req: Request, res: Response) => {
         .from('machines')
         .select('id')
         .eq('companyId', companyId)
+        .eq('active', true)
         .in('groupId', groupIdArray);
 
       machineIdsToFilter = (groupMachines || []).map(m => m.id);
@@ -263,11 +266,12 @@ export const getTimeMetrics = async (req: Request, res: Response) => {
     // Get unique machine IDs from time logs
     const uniqueMachineIds = [...new Set((timeLogs || []).map(log => log.machineId))];
 
-    // Fetch machine data to get number of matrices
+    // Fetch machine data to get number of matrices (only active machines)
     const { data: machines, error: machinesError } = await supabase
       .from('machines')
       .select('id, numberOfMatrices')
       .eq('companyId', companyId)
+      .eq('active', true)
       .in('id', uniqueMachineIds);
 
     if (machinesError) {
@@ -421,6 +425,7 @@ export const getOEEDetailedData = async (req: Request, res: Response) => {
         .from('machines')
         .select('id')
         .eq('companyId', companyId)
+        .eq('active', true)
         .in('groupId', groupIdArray);
 
       machineIdsToFilter = (groupMachines || []).map(m => m.id);
@@ -462,11 +467,12 @@ export const getOEEDetailedData = async (req: Request, res: Response) => {
     // Get unique machine IDs
     const uniqueMachineIds = [...new Set((timeLogs || []).map(log => log.machineId))];
 
-    // Fetch machine data
+    // Fetch machine data (only active machines)
     const { data: machines, error: machinesError } = await supabase
       .from('machines')
       .select('id, name, numberOfMatrices')
       .eq('companyId', companyId)
+      .eq('active', true)
       .in('id', uniqueMachineIds);
 
     if (machinesError) {
@@ -663,6 +669,7 @@ export const getStopTimeByMachine = async (req: Request, res: Response) => {
         .from('machines')
         .select('id')
         .eq('companyId', companyId)
+        .eq('active', true)
         .in('groupId', groupIdArray);
 
       machineIdsToFilter = (groupMachines || []).map(m => m.id);
@@ -706,11 +713,12 @@ export const getStopTimeByMachine = async (req: Request, res: Response) => {
     // Get unique machine IDs to fetch matrix counts
     const uniqueMachineIds = [...new Set((timeLogs || []).map(log => log.machineId))];
 
-    // Fetch machine data to get number of matrices
+    // Fetch machine data to get number of matrices (only active machines)
     const { data: machines, error: machinesError } = await supabase
       .from('machines')
       .select('id, name, numberOfMatrices')
       .eq('companyId', companyId)
+      .eq('active', true)
       .in('id', uniqueMachineIds);
 
     if (machinesError) {
@@ -872,6 +880,7 @@ export const getCycleMetrics = async (req: Request, res: Response) => {
         .from('machines')
         .select('id')
         .eq('companyId', companyId)
+        .eq('active', true)
         .in('groupId', groupIdArray);
 
       machineIdsToFilter = (groupMachines || []).map(m => m.id);

@@ -76,11 +76,12 @@ export const getDashboardData = async (req: Request, res: Response) => {
       .select('id, name, expectedCyclesPerShift')
       .eq('companyId', companyId);
 
-    // Fetch machines with their current status
+    // Fetch machines with their current status (only active machines)
     const { data: machines } = await supabase
       .from('machines')
       .select('id, name, code, groupId, numberOfMatrices, status, currentOperatorId')
-      .eq('companyId', companyId);
+      .eq('companyId', companyId)
+      .eq('active', true);
 
     // Fetch matrices (no companyId filter - matrices table doesn't have companyId column)
     // We'll filter by machineId when building the response

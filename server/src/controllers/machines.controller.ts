@@ -73,6 +73,7 @@ export const getOperatorMachines = async (req: Request, res: Response) => {
     }
 
     // Get machines that belong to those groups (including matrices)
+    // Only return active machines for operators
     const { data: machines, error } = await supabase
       .from('machines')
       .select(`
@@ -86,6 +87,7 @@ export const getOperatorMachines = async (req: Request, res: Response) => {
         )
       `)
       .eq('companyId', companyId)
+      .eq('active', true)
       .in('groupId', groupIds)
       .order('createdAt', { ascending: false });
 
@@ -157,9 +159,9 @@ export const getMachineById = async (req: Request, res: Response) => {
 export const createMachine = async (req: Request, res: Response) => {
   try {
     const { companyId } = req.user!;
-    const { name, code, groupId, numberOfMatrices, standardCycleTime } = req.body;
+    const { name, code, groupId, numberOfMatrices, standardCycleTime, active } = req.body;
 
-    console.log('📝 Creating machine:', { companyId, name, code, groupId, numberOfMatrices, standardCycleTime });
+    console.log('📝 Creating machine:', { companyId, name, code, groupId, numberOfMatrices, standardCycleTime, active });
 
     if (!name || !code) {
       console.log('❌ Validation failed: missing name or code');
@@ -177,6 +179,7 @@ export const createMachine = async (req: Request, res: Response) => {
       numberOfMatrices: numberOfMatrices || 0,
       standardCycleTime: standardCycleTime || 0,
       status: 'IDLE',
+      active: active !== undefined ? active : true,
     };
 
     console.log('📦 Machine data to insert:', machineData);
@@ -242,9 +245,9 @@ export const updateMachine = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { companyId } = req.user!;
-    const { name, code, groupId, numberOfMatrices, standardCycleTime, status } = req.body;
+    const { name, code, groupId, numberOfMatrices, standardCycleTime, status, active } = req.body;
 
-    console.log('🔄 Updating machine:', { id, companyId, numberOfMatrices });
+    console.log('🔄 Updating machine:', { id, companyId, numberOfMatrices, active });
 
     // Get current machine state to compare numberOfMatrices
     const { data: currentMachine, error: fetchError } = await supabase
@@ -272,6 +275,7 @@ export const updateMachine = async (req: Request, res: Response) => {
     if (numberOfMatrices !== undefined) updateData.numberOfMatrices = numberOfMatrices;
     if (standardCycleTime !== undefined) updateData.standardCycleTime = standardCycleTime;
     if (status !== undefined) updateData.status = status;
+    if (active !== undefined) updateData.active = active;
 
     const { data: machine, error } = await supabase
       .from('machines')
