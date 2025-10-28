@@ -7,7 +7,8 @@ import { MachineStatus } from '@/types';
 import MachineCard from '@/components/Operator/MachineCard';
 import EmergencyModal from '@/components/Operator/EmergencyModal';
 import ConfirmEndShiftModal from '@/components/Operator/ConfirmEndShiftModal';
-import { AlertTriangle, LogOut, Play, RefreshCw, Clock, Maximize, Minimize } from 'lucide-react';
+import HelpChainModal from '@/components/Operator/HelpChainModal';
+import { AlertTriangle, LogOut, Play, RefreshCw, Clock, Maximize, Minimize, LifeBuoy } from 'lucide-react';
 import { productionService } from '@/services/productionService';
 
 const OperatorDashboard = () => {
@@ -18,6 +19,7 @@ const OperatorDashboard = () => {
 
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [showConfirmEndShiftModal, setShowConfirmEndShiftModal] = useState(false);
+  const [showHelpChainModal, setShowHelpChainModal] = useState(false);
   const [blockedMessage, setBlockedMessage] = useState('');
   const [todayCycles, setTodayCycles] = useState(getTodayCycles(company?.id || '', user?.id));
 
@@ -477,6 +479,27 @@ const OperatorDashboard = () => {
     }
   };
 
+  const handleHelpChainSelect = (option: string) => {
+    console.log('🆘 Help chain option selected:', option);
+
+    switch (option) {
+      case 'supervisor':
+        showNotification('Chamando supervisor...', 'warning');
+        // TODO: Implementar lógica de notificação ao supervisor
+        break;
+      case 'quality':
+        showNotification('Solicitação de qualidade registrada', 'warning');
+        // TODO: Implementar lógica de notificação de qualidade
+        break;
+      case 'files':
+        showNotification('Abrindo arquivos...', 'success');
+        // TODO: Implementar navegação para arquivos/documentos
+        break;
+      default:
+        break;
+    }
+  };
+
   // Lógica para lidar com o logout
   const handleLogoutClick = () => {
     // Se o turno está ativo, mostrar modal de confirmação
@@ -576,6 +599,14 @@ const OperatorDashboard = () => {
             </div>
 
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowHelpChainModal(true)}
+                className="btn-warning flex items-center gap-2"
+                title="Cadeia de Ajuda"
+              >
+                <LifeBuoy className="w-5 h-5" />
+                <span className="hidden sm:inline">Cadeia de Ajuda</span>
+              </button>
               <button
                 onClick={toggleFullscreen}
                 className="btn-secondary flex items-center gap-2"
@@ -701,6 +732,14 @@ const OperatorDashboard = () => {
           onClose={() => setShowConfirmEndShiftModal(false)}
           onConfirmEndShift={handleEndShiftAndLogout}
           onLogoutWithoutEndShift={handleLogoutWithoutEndShift}
+        />
+      )}
+
+      {/* Help Chain Modal */}
+      {showHelpChainModal && (
+        <HelpChainModal
+          onClose={() => setShowHelpChainModal(false)}
+          onSelect={handleHelpChainSelect}
         />
       )}
 
