@@ -20,6 +20,37 @@ export const startSession = async (req: Request, res: Response) => {
       });
     }
 
+    // Close any open time logs for this machine before starting new session
+    // This ensures clean state when starting a new shift
+    const { data: openLogs } = await supabase
+      .from('time_logs')
+      .select('*')
+      .eq('machineId', machineId)
+      .is('endedAt', null);
+
+    const now = new Date();
+
+    if (openLogs && openLogs.length > 0) {
+      console.log(`🧹 Found ${openLogs.length} open time log(s) for machine ${machineId}, closing them before starting new session`);
+
+      for (const log of openLogs) {
+        const startedAt = new Date(log.startedAt);
+        const durationSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
+
+        await supabase
+          .from('time_logs')
+          .update({
+            endedAt: now.toISOString(),
+            durationSeconds,
+          })
+          .eq('id', log.id);
+
+        console.log(`✅ Closed pending time log ${log.id} - Status: ${log.status}, Duration: ${durationSeconds}s`);
+      }
+    } else {
+      console.log(`✅ No open time logs found for machine ${machineId}`);
+    }
+
     // Create production session
     const { data: session, error: sessionError } = await supabase
       .from('production_sessions')
@@ -628,17 +659,18 @@ export const endSession = async (req: Request, res: Response) => {
       });
     }
 
-    // End all open time logs (closing shift)
+    // End ALL open time logs for this machine (not just this session)
+    // This ensures any orphaned time logs from previous sessions are also closed
     const { data: openLogs } = await supabase
       .from('time_logs')
       .select('*')
-      .eq('sessionId', activeSession.id)
+      .eq('machineId', machineId)
       .is('endedAt', null);
 
     const now = new Date();
 
     if (openLogs && openLogs.length > 0) {
-      console.log(`🔄 Closing ${openLogs.length} open time log(s) for session ${activeSession.id} (shift end)`);
+      console.log(`🔄 Closing ${openLogs.length} open time log(s) for machine ${machineId} (shift end)`);
 
       for (const log of openLogs) {
         const startedAt = new Date(log.startedAt);
@@ -652,8 +684,10 @@ export const endSession = async (req: Request, res: Response) => {
           })
           .eq('id', log.id);
 
-        console.log(`✅ Closed time log ${log.id} - Status: ${log.status}, Matrix: ${log.matrixId || 'N/A'}, Duration: ${durationSeconds}s`);
+        console.log(`✅ Closed time log ${log.id} - Session: ${log.sessionId}, Status: ${log.status}, Matrix: ${log.matrixId || 'N/A'}, Duration: ${durationSeconds}s`);
       }
+    } else {
+      console.log(`✅ No open time logs to close for machine ${machineId}`);
     }
 
     // Create final time log with shift end reason if provided
