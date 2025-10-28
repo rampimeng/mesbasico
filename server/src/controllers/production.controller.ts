@@ -592,7 +592,7 @@ export const endSession = async (req: Request, res: Response) => {
     }
 
     // Get active session
-    const { data: sessions, error: sessionError } = await supabase
+    const { data: sessions, error: queryError } = await supabase
       .from('production_sessions')
       .select('*')
       .eq('machineId', machineId)
@@ -605,7 +605,7 @@ export const endSession = async (req: Request, res: Response) => {
       machineId,
       operatorId: effectiveOperatorId,
       foundSessions: sessions?.length || 0,
-      error: sessionError
+      error: queryError
     });
 
     // Debug: Get ALL sessions for this machine (to see what exists)
