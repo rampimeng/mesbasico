@@ -99,7 +99,22 @@ const ControlDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const getMachineStatusColor = (status: MachineStatus) => {
+  const getMachineStatusColor = (
+    status: MachineStatus,
+    hasMatrices: boolean,
+    allMatricesRunning: boolean
+  ) => {
+    // If machine has matrices and status is NORMAL_RUNNING
+    if (hasMatrices && status === MachineStatus.NORMAL_RUNNING) {
+      // If all matrices running → Green
+      if (allMatricesRunning) {
+        return 'bg-green-500 border-green-600';
+      }
+      // If some matrices stopped → Yellow (Partial Operation)
+      return 'bg-yellow-500 border-yellow-600';
+    }
+
+    // Default status colors (no matrices or other statuses)
     switch (status) {
       case MachineStatus.NORMAL_RUNNING:
         return 'bg-green-500 border-green-600';
@@ -114,7 +129,22 @@ const ControlDashboard = () => {
     }
   };
 
-  const getStatusText = (status: MachineStatus) => {
+  const getStatusText = (
+    status: MachineStatus,
+    hasMatrices: boolean,
+    allMatricesRunning: boolean
+  ) => {
+    // If machine has matrices and status is NORMAL_RUNNING
+    if (hasMatrices && status === MachineStatus.NORMAL_RUNNING) {
+      // If all matrices running → "OPERANDO"
+      if (allMatricesRunning) {
+        return 'OPERANDO';
+      }
+      // If some matrices stopped → "OPERANDO PARCIAL"
+      return 'OPERANDO PARCIAL';
+    }
+
+    // Default status text (no matrices or other statuses)
     switch (status) {
       case MachineStatus.NORMAL_RUNNING:
         return 'OPERANDO';
@@ -246,13 +276,17 @@ const ControlDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {machines.map((machine) => {
             const isEmergency = machine.status === MachineStatus.EMERGENCY;
+            const hasMatrices = machine.numberOfMatrices > 0;
             const runningMatrices = machine.matrices.filter((m) => m.status === 'RUNNING').length;
+            const allMatricesRunning = hasMatrices && runningMatrices === machine.numberOfMatrices;
 
             return (
               <div
                 key={machine.id}
                 className={`border-4 rounded-xl p-6 ${getMachineStatusColor(
-                  machine.status
+                  machine.status,
+                  hasMatrices,
+                  allMatricesRunning
                 )}`}
               >
                 {/* Machine Name */}
@@ -264,7 +298,7 @@ const ControlDashboard = () => {
                 <div className="text-center mb-4">
                   <span className="inline-flex items-center gap-2 px-4 py-2 bg-black bg-opacity-50 rounded-lg text-2xl font-bold">
                     {isEmergency && <AlertTriangle className="w-6 h-6" />}
-                    {getStatusText(machine.status)}
+                    {getStatusText(machine.status, hasMatrices, allMatricesRunning)}
                   </span>
                 </div>
 
