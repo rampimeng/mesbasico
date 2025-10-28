@@ -681,7 +681,7 @@ export const endSession = async (req: Request, res: Response) => {
     }
 
     // End session
-    const { error: sessionError } = await supabase
+    const { error: endSessionError } = await supabase
       .from('production_sessions')
       .update({
         active: false,
@@ -689,11 +689,11 @@ export const endSession = async (req: Request, res: Response) => {
       })
       .eq('id', activeSession.id);
 
-    if (sessionError) {
-      console.error('❌ Error ending session:', sessionError);
+    if (endSessionError) {
+      console.error('❌ Error ending session:', endSessionError);
       return res.status(400).json({
         success: false,
-        error: sessionError.message,
+        error: endSessionError.message,
       });
     }
 
@@ -907,7 +907,7 @@ export const closeAllActiveSessions = async (req: Request, res: Response) => {
         }
 
         // 2. Close the production session
-        const { error: sessionError } = await supabase
+        const { error: closeSessionError } = await supabase
           .from('production_sessions')
           .update({
             endedAt: now,
@@ -915,8 +915,8 @@ export const closeAllActiveSessions = async (req: Request, res: Response) => {
           })
           .eq('id', session.id);
 
-        if (sessionError) {
-          console.error(`❌ Error closing session ${session.id}:`, sessionError);
+        if (closeSessionError) {
+          console.error(`❌ Error closing session ${session.id}:`, closeSessionError);
           errorCount++;
           continue;
         }
