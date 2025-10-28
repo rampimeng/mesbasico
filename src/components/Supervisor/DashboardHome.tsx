@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Calendar, Filter, TrendingUp, BarChart3, Activity, AlertCircle, Download } from 'lucide-react';
 import { DashboardFilters as FilterType } from '@/types';
 import DashboardFilters from './DashboardFilters';
-import { analyticsService, ParetoDataItem, TimeMetrics, CycleMetrics, OEEDetailedData } from '@/services/analyticsService';
+import { analyticsService, ParetoDataItem, TimeMetrics, CycleMetrics, OEEDetailedData, StopTimeByMachineData } from '@/services/analyticsService';
+import StopTimeByMachineChart from './StopTimeByMachineChart';
 import * as XLSX from 'xlsx';
 
 const DashboardHome = () => {
@@ -18,6 +19,7 @@ const DashboardHome = () => {
   const [paretoData, setParetoData] = useState<ParetoDataItem[]>([]);
   const [timeMetrics, setTimeMetrics] = useState<TimeMetrics | null>(null);
   const [cycleMetrics, setCycleMetrics] = useState<CycleMetrics | null>(null);
+  const [stopTimeByMachine, setStopTimeByMachine] = useState<StopTimeByMachineData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exportingOEE, setExportingOEE] = useState(false);
@@ -43,15 +45,17 @@ const DashboardHome = () => {
       console.log('📊 Loading analytics data with filters:', analyticsFilters);
 
       // Load all data in parallel
-      const [pareto, time, cycles] = await Promise.all([
+      const [pareto, time, cycles, stopTimeByMachineData] = await Promise.all([
         analyticsService.getParetoData(analyticsFilters),
         analyticsService.getTimeMetrics(analyticsFilters),
         analyticsService.getCycleMetrics(analyticsFilters),
+        analyticsService.getStopTimeByMachine(analyticsFilters),
       ]);
 
       setParetoData(pareto);
       setTimeMetrics(time);
       setCycleMetrics(cycles);
+      setStopTimeByMachine(stopTimeByMachineData);
 
       console.log('✅ Analytics data loaded successfully');
     } catch (err: any) {
@@ -66,6 +70,37 @@ const DashboardHome = () => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
+  };
+
+  const generateChartTitle = () => {
+    const parts: string[] = ['Tempo de Parada por Máquina e Motivo'];
+    const filterDetails: string[] = [];
+
+    // Período
+    const startDateStr = filters.startDate.toLocaleDateString('pt-BR');
+    const endDateStr = filters.endDate.toLocaleDateString('pt-BR');
+    filterDetails.push(`Período: ${startDateStr} - ${endDateStr}`);
+
+    // Grupos (células)
+    if (filters.groupIds && filters.groupIds.length > 0) {
+      filterDetails.push(`${filters.groupIds.length} célula(s) selecionada(s)`);
+    }
+
+    // Máquinas
+    if (filters.machineIds && filters.machineIds.length > 0) {
+      filterDetails.push(`${filters.machineIds.length} máquina(s) selecionada(s)`);
+    }
+
+    // Operadores
+    if (filters.operatorIds && filters.operatorIds.length > 0) {
+      filterDetails.push(`${filters.operatorIds.length} operador(es) selecionado(s)`);
+    }
+
+    if (filterDetails.length > 0) {
+      parts.push(`(${filterDetails.join(' | ')})`);
+    }
+
+    return parts.join(' ');
   };
 
   const exportOEEToExcel = async () => {
@@ -352,6 +387,12 @@ const DashboardHome = () => {
               </div>
             )}
           </div>
+
+          {/* Stop Time by Machine Chart */}
+          <StopTimeByMachineChart
+            data={stopTimeByMachine || { chartData: [], reasons: [] }}
+            title={generateChartTitle()}
+          />
 
           {/* Cycles vs Target */}
           <div className="card">

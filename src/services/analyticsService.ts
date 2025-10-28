@@ -72,6 +72,18 @@ export interface CycleMetrics {
   percentage: number;
 }
 
+export interface StopTimeByMachineData {
+  chartData: Array<{
+    machineId: string;
+    machineName: string;
+    [reasonId: string]: string | number; // Dynamic keys for each stop reason
+  }>;
+  reasons: Array<{
+    id: string;
+    name: string;
+  }>;
+}
+
 export interface AnalyticsFilters {
   startDate?: string;
   endDate?: string;
@@ -150,6 +162,24 @@ export const analyticsService = {
     const data = await response.json();
     console.log('📦 OEE detailed response:', { ok: response.ok, status: response.status, data });
     if (!response.ok) throw new Error(data.error || data.message || 'Failed to fetch OEE detailed data');
+    return data.data;
+  },
+
+  async getStopTimeByMachine(filters: AnalyticsFilters): Promise<StopTimeByMachineData> {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.groupIds?.length) params.append('groupIds', filters.groupIds.join(','));
+    if (filters.machineIds?.length) params.append('machineIds', filters.machineIds.join(','));
+    if (filters.operatorIds?.length) params.append('operatorIds', filters.operatorIds.join(','));
+
+    console.log('🏭 Fetching stop time by machine with filters:', filters);
+    const response = await fetch(`${API_URL}/analytics/stop-time-by-machine?${params.toString()}`, {
+      headers: getAuthHeader(),
+    });
+    const data = await response.json();
+    console.log('📦 Stop time by machine response:', { ok: response.ok, status: response.status, data });
+    if (!response.ok) throw new Error(data.error || data.message || 'Failed to fetch stop time by machine');
     return data.data;
   },
 };

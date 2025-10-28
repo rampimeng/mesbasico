@@ -511,6 +511,189 @@ export const getOEEDetailedData = async (req: Request, res: Response) => {
   }
 };
 
+// Get stop time by machine - for stacked bar chart
+export const getStopTimeByMachine = async (req: Request, res: Response) => {
+  try {
+    const { companyId } = req.user!;
+    const { startDate, endDate, groupIds, machineIds, operatorIds } = req.query;
+
+    console.log('🏭 Fetching stop time by machine:', { companyId, startDate, endDate, groupIds, machineIds, operatorIds });
+
+    // Build query
+    let query = supabase
+      .from('time_logs')
+      .select('*, stop_reasons(name, excludeFromPareto), machines(name)')
+      .eq('companyId', companyId)
+      .in('status', ['STOPPED', 'EMERGENCY'])
+      .not('stopReasonId', 'is', null);
+
+    // Apply filters
+    if (startDate) {
+      query = query.gte('startedAt', startDate as string);
+    }
+    if (endDate) {
+      query = query.lte('startedAt', endDate as string);
+    }
+    if (machineIds && (machineIds as string).length > 0) {
+      const machineIdArray = (machineIds as string).split(',');
+      query = query.in('machineId', machineIdArray);
+    }
+    if (operatorIds && (operatorIds as string).length > 0) {
+      const operatorIdArray = (operatorIds as string).split(',');
+      query = query.in('operatorId', operatorIdArray);
+    }
+
+    const { data: timeLogs, error } = await query;
+
+    if (error) {
+      console.error('❌ Error fetching time logs:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    console.log(`📋 Found ${timeLogs?.length || 0} stop time logs`);
+
+    // Get unique machine IDs to fetch matrix counts
+    const uniqueMachineIds = [...new Set((timeLogs || []).map(log => log.machineId))];
+
+    // Fetch machine data to get number of matrices
+    const { data: machines, error: machinesError } = await supabase
+      .from('machines')
+      .select('id, name, numberOfMatrices')
+      .eq('companyId', companyId)
+      .in('id', uniqueMachineIds);
+
+    if (machinesError) {
+      console.error('❌ Error fetching machines:', machinesError);
+      return res.status(500).json({
+        success: false,
+        error: machinesError.message,
+      });
+    }
+
+    // Create machine map with matrix counts
+    const machineMap = new Map<string, { name: string; numberOfMatrices: number }>();
+    for (const machine of machines || []) {
+      machineMap.set(machine.id, {
+        name: machine.name,
+        numberOfMatrices: machine.numberOfMatrices || 1,
+      });
+    }
+
+    // Aggregate data: Map<machineId, Map<reasonId, { reasonName, duration }>>
+    const machineStopData = new Map<string, Map<string, { reasonName: string; duration: number }>>();
+
+    for (const log of timeLogs || []) {
+      const reasonId = log.stopReasonId;
+      const reasonName = log.stop_reasons?.name || log.stopReasonName || 'Desconhecido';
+      const excludeFromPareto = log.stop_reasons?.excludeFromPareto || false;
+      const duration = log.durationSeconds || 0;
+
+      // Skip reasons that should be excluded from Pareto
+      if (excludeFromPareto || duration === 0) {
+        continue;
+      }
+
+      const machineInfo = machineMap.get(log.machineId);
+      if (!machineInfo) continue;
+
+      // Calculate weighted duration (consider if it affects all matrices or just one)
+      const matricesAffected = log.matrixId ? 1 : machineInfo.numberOfMatrices;
+      const weightedDuration = duration * matricesAffected;
+
+      if (!machineStopData.has(log.machineId)) {
+        machineStopData.set(log.machineId, new Map());
+      }
+
+      const reasonMap = machineStopData.get(log.machineId)!;
+      if (reasonMap.has(reasonId)) {
+        const existing = reasonMap.get(reasonId)!;
+        existing.duration += weightedDuration;
+      } else {
+        reasonMap.set(reasonId, {
+          reasonName,
+          duration: weightedDuration,
+        });
+      }
+    }
+
+    // Get all unique stop reasons across all machines
+    const allReasons = new Set<string>();
+    for (const reasonMap of machineStopData.values()) {
+      for (const reasonId of reasonMap.keys()) {
+        allReasons.add(reasonId);
+      }
+    }
+
+    // Get reason names
+    const reasonNames = new Map<string, string>();
+    for (const [machineId, reasonMap] of machineStopData) {
+      for (const [reasonId, data] of reasonMap) {
+        reasonNames.set(reasonId, data.reasonName);
+      }
+    }
+
+    // Format data for stacked bar chart
+    // Each entry = { machineName, [reasonName1]: duration1, [reasonName2]: duration2, ... }
+    const chartData = [];
+
+    for (const [machineId, reasonMap] of machineStopData) {
+      const machineInfo = machineMap.get(machineId);
+      if (!machineInfo) continue;
+
+      const dataPoint: any = {
+        machineId,
+        machineName: machineInfo.name,
+      };
+
+      // Add each reason's duration to the data point
+      for (const [reasonId, data] of reasonMap) {
+        dataPoint[reasonId] = Math.round(data.duration / 60); // Convert to minutes
+      }
+
+      chartData.push(dataPoint);
+    }
+
+    // Sort by total stop time (descending)
+    chartData.sort((a, b) => {
+      const totalA = Object.keys(a)
+        .filter(key => key !== 'machineId' && key !== 'machineName')
+        .reduce((sum, key) => sum + (a[key] || 0), 0);
+      const totalB = Object.keys(b)
+        .filter(key => key !== 'machineId' && key !== 'machineName')
+        .reduce((sum, key) => sum + (b[key] || 0), 0);
+      return totalB - totalA;
+    });
+
+    // Create reason list with IDs and names for legend
+    const reasons = Array.from(reasonNames.entries()).map(([id, name]) => ({
+      id,
+      name,
+    }));
+
+    console.log('✅ Stop time by machine calculated:', {
+      machines: chartData.length,
+      reasons: reasons.length,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        chartData,
+        reasons,
+      },
+    });
+  } catch (error: any) {
+    console.error('❌ Exception in getStopTimeByMachine:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch stop time by machine',
+    });
+  }
+};
+
 // Get cycle metrics - completed vs target
 export const getCycleMetrics = async (req: Request, res: Response) => {
   try {
