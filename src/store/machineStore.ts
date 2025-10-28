@@ -21,22 +21,44 @@ interface MachineStore {
   isMachineInUse: (machineId: string) => boolean;
 }
 
-const generateMatrices = (machines: Machine[]): Matrix[] => {
-  const matrices: Matrix[] = [];
-  machines.forEach((machine) => {
-    for (let i = 1; i <= machine.numberOfMatrices; i++) {
-      matrices.push({
-        id: `${machine.id}-mat${i}`,
-        machineId: machine.id,
-        matrixNumber: i,
-        status: MatrixStatus.STOPPED,
-        lastStatusChangeAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
+const extractMatrices = (machines: Machine[]): Matrix[] => {
+  const allMatrices: Matrix[] = [];
+
+  machines.forEach((machine: any) => {
+    // If machine already has matrices from backend, use them
+    if (machine.matrices && Array.isArray(machine.matrices) && machine.matrices.length > 0) {
+      console.log(`✅ Using ${machine.matrices.length} matrices from backend for machine ${machine.name}`);
+      machine.matrices.forEach((matrix: any) => {
+        allMatrices.push({
+          id: matrix.id,
+          machineId: machine.id,
+          matrixNumber: matrix.matrixNumber,
+          status: matrix.status as MatrixStatus,
+          currentStopReasonId: matrix.currentStopReasonId,
+          lastStatusChangeAt: matrix.updatedAt ? new Date(matrix.updatedAt) : new Date(),
+          createdAt: matrix.createdAt ? new Date(matrix.createdAt) : new Date(),
+          updatedAt: matrix.updatedAt ? new Date(matrix.updatedAt) : new Date(),
+        });
       });
     }
+    // Fallback: Generate matrices if not provided by backend (backward compatibility)
+    else if (machine.numberOfMatrices > 0) {
+      console.log(`⚠️ Generating ${machine.numberOfMatrices} matrices for machine ${machine.name} (backward compatibility)`);
+      for (let i = 1; i <= machine.numberOfMatrices; i++) {
+        allMatrices.push({
+          id: `${machine.id}-mat${i}`,
+          machineId: machine.id,
+          matrixNumber: i,
+          status: MatrixStatus.STOPPED,
+          lastStatusChangeAt: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+    }
   });
-  return matrices;
+
+  return allMatrices;
 };
 
 export const useMachineStore = create<MachineStore>((set, get) => ({
@@ -52,7 +74,8 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
       console.log('🔄 Loading my machines...');
       const machines = await machinesService.getMyMachines();
       console.log('✅ Loaded machines:', machines);
-      const matrices = generateMatrices(machines);
+      const matrices = extractMatrices(machines);
+      console.log('🔢 Extracted matrices:', matrices);
       set({ machines, matrices, loading: false });
     } catch (error: any) {
       console.error('❌ Error loading machines:', error);
@@ -66,7 +89,8 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
       console.log('🔄 Loading all machines (Admin/Supervisor)...');
       const machines = await machinesService.getAll();
       console.log('✅ Loaded all machines:', machines);
-      const matrices = generateMatrices(machines);
+      const matrices = extractMatrices(machines);
+      console.log('🔢 Extracted matrices:', matrices);
       set({ machines, matrices, loading: false });
     } catch (error: any) {
       console.error('❌ Error loading all machines:', error);
@@ -75,7 +99,7 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
   },
 
   setMachines: (machines) => {
-    const matrices = generateMatrices(machines);
+    const matrices = extractMatrices(machines);
     set({ machines, matrices });
   },
 
@@ -86,36 +110,10 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
       // Call backend API - pass operatorId
       await productionService.updateMachineStatus(machineId, status, stopReasonId, operatorId);
 
-      // Update local state
-      set((state) => ({
-        machines: state.machines.map((m) =>
-          m.id === machineId
-            ? {
-                ...m,
-                status,
-                currentOperatorId: status === MachineStatus.IDLE ? undefined : operatorId,
-                sessionStartedAt: status === MachineStatus.IDLE ? undefined : new Date(),
-              }
-            : m
-        ),
-      }));
-
-      // Atualizar status de todas as matrizes
-      if (status === MachineStatus.NORMAL_RUNNING || status === MachineStatus.EMERGENCY) {
-        const newMatrixStatus = status === MachineStatus.EMERGENCY ? MatrixStatus.STOPPED : MatrixStatus.RUNNING;
-        set((state) => ({
-          matrices: state.matrices.map((mat) =>
-            mat.machineId === machineId
-              ? {
-                  ...mat,
-                  status: newMatrixStatus,
-                  lastStatusChangeAt: new Date(),
-                  currentStopReasonId: status === MachineStatus.EMERGENCY ? mat.currentStopReasonId : undefined,
-                }
-              : mat
-          ),
-        }));
-      }
+      // Reload machines from backend to get updated state
+      console.log('🔄 Reloading machines after status update...');
+      await get().loadMyMachines();
+      console.log('✅ Machines reloaded');
     } catch (error: any) {
       console.error('❌ Error updating machine status:', error);
       set({ error: error.message });
@@ -141,19 +139,10 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
         operatorId
       );
 
-      // Update local state
-      set((state) => ({
-        matrices: state.matrices.map((mat) =>
-          mat.id === matrixId
-            ? {
-                ...mat,
-                status,
-                currentStopReasonId: status === MatrixStatus.STOPPED ? stopReasonId : undefined,
-                lastStatusChangeAt: new Date(),
-              }
-            : mat
-        ),
-      }));
+      // Reload machines from backend to get updated state
+      console.log('🔄 Reloading machines after matrix status update...');
+      await get().loadMyMachines();
+      console.log('✅ Machines reloaded');
     } catch (error: any) {
       console.error('❌ Error updating matrix status:', error);
       set({ error: error.message });
@@ -165,33 +154,15 @@ export const useMachineStore = create<MachineStore>((set, get) => ({
       // Call backend API to start session - pass operatorId
       const session = await productionService.startSession(machineId, operatorId);
 
-      // Update local state
+      // Add session to local state
       set((state) => ({
         activeSessions: [...state.activeSessions, session],
-        machines: state.machines.map((m) =>
-          m.id === machineId
-            ? {
-                ...m,
-                status: MachineStatus.NORMAL_RUNNING,
-                currentOperatorId: operatorId,
-                sessionStartedAt: new Date(),
-              }
-            : m
-        ),
       }));
 
-      // Update matrices to RUNNING
-      set((state) => ({
-        matrices: state.matrices.map((mat) =>
-          mat.machineId === machineId
-            ? {
-                ...mat,
-                status: MatrixStatus.RUNNING,
-                lastStatusChangeAt: new Date(),
-              }
-            : mat
-        ),
-      }));
+      // Reload machines from backend to get updated state
+      console.log('🔄 Reloading machines after starting session...');
+      await get().loadMyMachines();
+      console.log('✅ Machines reloaded');
     } catch (error: any) {
       console.error('❌ Error starting session:', error);
       set({ error: error.message });

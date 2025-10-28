@@ -220,6 +220,28 @@ export const updateMachineStatus = async (req: Request, res: Response) => {
       console.error('❌ Error updating machine:', machineError);
     }
 
+    // Update all matrices of this machine
+    // When machine status changes, all matrices should reflect that
+    let matrixStatus = 'STOPPED';
+    if (status === 'NORMAL_RUNNING') {
+      matrixStatus = 'RUNNING';
+    }
+
+    const { data: updatedMatrices, error: matricesError } = await supabase
+      .from('matrices')
+      .update({
+        status: matrixStatus,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq('machineId', machineId)
+      .select();
+
+    if (matricesError) {
+      console.error('❌ Error updating matrices:', matricesError);
+    } else {
+      console.log(`✅ Updated ${updatedMatrices?.length || 0} matrices to status ${matrixStatus}`);
+    }
+
     console.log('✅ Machine status updated successfully');
 
     res.json({
@@ -319,7 +341,24 @@ export const updateMatrixStatus = async (req: Request, res: Response) => {
       console.error('❌ Error creating time log:', logError);
     }
 
-    console.log('✅ Matrix status updated successfully');
+    // Update matrix status in the matrices table
+    const { error: matrixUpdateError } = await supabase
+      .from('matrices')
+      .update({
+        status,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq('id', matrixId);
+
+    if (matrixUpdateError) {
+      console.error('❌ Error updating matrix status:', matrixUpdateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update matrix status',
+      });
+    }
+
+    console.log(`✅ Matrix ${matrixId} status updated to ${status}`);
 
     res.json({
       success: true,

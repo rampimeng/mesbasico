@@ -8,7 +8,16 @@ export const getAllMachines = async (req: Request, res: Response) => {
 
     const { data: machines, error } = await supabase
       .from('machines')
-      .select('*')
+      .select(`
+        *,
+        matrices (
+          id,
+          matrixNumber,
+          status,
+          createdAt,
+          updatedAt
+        )
+      `)
       .eq('companyId', companyId)
       .order('createdAt', { ascending: false});
 
@@ -63,10 +72,19 @@ export const getOperatorMachines = async (req: Request, res: Response) => {
       });
     }
 
-    // Get machines that belong to those groups
+    // Get machines that belong to those groups (including matrices)
     const { data: machines, error } = await supabase
       .from('machines')
-      .select('*')
+      .select(`
+        *,
+        matrices (
+          id,
+          matrixNumber,
+          status,
+          createdAt,
+          updatedAt
+        )
+      `)
       .eq('companyId', companyId)
       .in('groupId', groupIds)
       .order('createdAt', { ascending: false });
@@ -102,7 +120,16 @@ export const getMachineById = async (req: Request, res: Response) => {
 
     const { data: machine, error } = await supabase
       .from('machines')
-      .select('*')
+      .select(`
+        *,
+        matrices (
+          id,
+          matrixNumber,
+          status,
+          createdAt,
+          updatedAt
+        )
+      `)
       .eq('id', id)
       .eq('companyId', companyId)
       .single();
