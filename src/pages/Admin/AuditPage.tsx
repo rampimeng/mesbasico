@@ -11,14 +11,17 @@ type TabType = 'cycles' | 'stops';
 const AuditPage = () => {
   const company = useAuthStore((state) => state.company);
   const { getCycleLogs, getTimeLogs, deleteCycleLog, deleteTimeLog, loadCycleLogs, loadTimeLogs, loading } = useAuditStore();
-  const machines = useRegistrationStore((state) => state.getMachines(company?.id || ''));
-  const operators = useRegistrationStore((state) => state.getOperators(company?.id || ''));
+  const { getMachines, getOperators, getGroups, loadAll } = useRegistrationStore();
+  const machines = getMachines(company?.id || '');
+  const operators = getOperators(company?.id || '');
+  const groups = getGroups(company?.id || '');
 
   const [activeTab, setActiveTab] = useState<TabType>('cycles');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   // Filtros
   const [startDate, setStartDate] = useState('');
+  const [groupFilter, setGroupFilter] = useState('');
   const [machineFilter, setMachineFilter] = useState('');
   const [operatorFilter, setOperatorFilter] = useState('');
 
@@ -29,7 +32,8 @@ const AuditPage = () => {
   useEffect(() => {
     loadCycleLogs();
     loadTimeLogs();
-  }, [loadCycleLogs, loadTimeLogs]);
+    loadAll(); // Carregar máquinas, operadores, grupos, etc
+  }, [loadCycleLogs, loadTimeLogs, loadAll]);
 
   // Aplicar filtros
   const cycleLogs = useMemo(() => {
@@ -39,6 +43,12 @@ const AuditPage = () => {
       const filterDate = new Date(startDate);
       filtered = filtered.filter(log => new Date(log.cycleCompletedAt) >= filterDate);
     }
+    if (groupFilter) {
+      // Filtrar por célula: buscar máquinas do grupo
+      const groupMachines = machines.filter(m => m.groupId === groupFilter);
+      const groupMachineIds = groupMachines.map(m => m.id);
+      filtered = filtered.filter(log => groupMachineIds.includes(log.machineId));
+    }
     if (machineFilter) {
       filtered = filtered.filter(log => log.machineId === machineFilter);
     }
@@ -47,7 +57,7 @@ const AuditPage = () => {
     }
 
     return filtered;
-  }, [allCycleLogs, startDate, machineFilter, operatorFilter]);
+  }, [allCycleLogs, startDate, groupFilter, machineFilter, operatorFilter, machines]);
 
   const timeLogs = useMemo(() => {
     let filtered = allTimeLogs;
@@ -56,6 +66,12 @@ const AuditPage = () => {
       const filterDate = new Date(startDate);
       filtered = filtered.filter(log => new Date(log.startedAt) >= filterDate);
     }
+    if (groupFilter) {
+      // Filtrar por célula: buscar máquinas do grupo
+      const groupMachines = machines.filter(m => m.groupId === groupFilter);
+      const groupMachineIds = groupMachines.map(m => m.id);
+      filtered = filtered.filter(log => groupMachineIds.includes(log.machineId));
+    }
     if (machineFilter) {
       filtered = filtered.filter(log => log.machineId === machineFilter);
     }
@@ -64,7 +80,20 @@ const AuditPage = () => {
     }
 
     return filtered;
-  }, [allTimeLogs, startDate, machineFilter, operatorFilter]);
+  }, [allTimeLogs, startDate, groupFilter, machineFilter, operatorFilter, machines]);
+
+  // Helper para obter célula ou máquina
+  const getGroupOrMachineName = (machineId: string) => {
+    const machine = machines.find(m => m.id === machineId);
+    if (!machine) return machineId;
+
+    if (machine.groupId) {
+      const group = groups.find(g => g.id === machine.groupId);
+      if (group) return group.name;
+    }
+
+    return machine.name;
+  };
 
   const handleDeleteCycle = async (id: string) => {
     try {
@@ -86,7 +115,7 @@ const AuditPage = () => {
 
   const exportCyclesToExcel = () => {
     const data = cycleLogs.map(log => ({
-      'Máquina': log.machineName || log.machineId,
+      'Célula/Máquina': getGroupOrMachineName(log.machineId),
       'Operador': log.operatorName || log.operatorId,
       'Data': format(new Date(log.cycleCompletedAt), 'dd/MM/yyyy'),
       'Hora': format(new Date(log.cycleCompletedAt), 'HH:mm:ss'),
@@ -123,6 +152,7 @@ const AuditPage = () => {
 
   const clearFilters = () => {
     setStartDate('');
+    setGroupFilter('');
     setMachineFilter('');
     setOperatorFilter('');
   };
@@ -145,7 +175,7 @@ const AuditPage = () => {
             <h2 className="text-lg font-semibold text-gray-900">Filtros</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Data Início
@@ -156,6 +186,24 @@ const AuditPage = () => {
                 onChange={(e) => setStartDate(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Célula
+              </label>
+              <select
+                value={groupFilter}
+                onChange={(e) => setGroupFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Todas as células</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -267,8 +315,8 @@ const AuditPage = () => {
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-4">
                         <div>
-                          <span className="text-gray-500">Máquina:</span>
-                          <p className="font-medium text-gray-900">{log.machineName || log.machineId}</p>
+                          <span className="text-gray-500">Célula/Máquina:</span>
+                          <p className="font-medium text-gray-900">{getGroupOrMachineName(log.machineId)}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Operador:</span>
