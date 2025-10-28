@@ -368,7 +368,7 @@ const OperatorDashboard = () => {
               await updateMachineStatus(machine.id, MachineStatus.STOPPED, user.id, shiftEndReasonId);
             }
             // Then end the production session
-            await productionService.endSession(machine.id);
+            await productionService.endSession(machine.id, user.id);
             successCount++;
             console.log(`✅ Session for machine ${machine.name} ended successfully`);
           } catch (error: any) {
