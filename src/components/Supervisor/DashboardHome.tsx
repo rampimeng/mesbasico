@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Filter, TrendingUp, BarChart3, Activity, AlertCircle, Download } from 'lucide-react';
+import { Calendar, Filter, TrendingUp, BarChart3, Activity, AlertCircle, Download, Play, PauseCircle, RotateCw } from 'lucide-react';
 import { DashboardFilters as FilterType } from '@/types';
 import DashboardFilters from './DashboardFilters';
 import { analyticsService, ParetoDataItem, TimeMetrics, CycleMetrics, OEEDetailedData, StopTimeByMachineData } from '@/services/analyticsService';
@@ -319,7 +319,7 @@ const DashboardHome = () => {
                   </p>
                   <p className="text-blue-100 text-xs mt-1">Ponderado por matrizes</p>
                 </div>
-                <Activity className="w-12 h-12 text-blue-200" />
+                <Play className="w-12 h-12 text-blue-200" />
               </div>
             </div>
 
@@ -332,7 +332,7 @@ const DashboardHome = () => {
                   </p>
                   <p className="text-red-100 text-xs mt-1">Ponderado por matrizes</p>
                 </div>
-                <Activity className="w-12 h-12 text-red-200" />
+                <PauseCircle className="w-12 h-12 text-red-200" />
               </div>
             </div>
 
@@ -344,7 +344,7 @@ const DashboardHome = () => {
                     {cycleMetrics ? `${cycleMetrics.completedCycles}/${cycleMetrics.targetCycles || '?'}` : '0/0'}
                   </p>
                 </div>
-                <Activity className="w-12 h-12 text-purple-200" />
+                <RotateCw className="w-12 h-12 text-purple-200" />
               </div>
             </div>
           </div>

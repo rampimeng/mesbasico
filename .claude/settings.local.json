@@ -13,7 +13,10 @@
       "Bash(npm install:*)",
       "Bash(tasklist:*)",
       "Bash(taskkill:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm run build:server:*)"
     ],
     "deny": [],
     "ask": []
