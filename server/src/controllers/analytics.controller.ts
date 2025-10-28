@@ -62,7 +62,36 @@ export const getParetoData = async (req: Request, res: Response) => {
       })));
     }
 
-    // Aggregate by stop reason
+    // Get unique machine IDs to fetch matrix counts
+    const uniqueMachineIds = [...new Set((timeLogs || []).map(log => log.machineId))];
+
+    // Fetch machine data to get number of matrices
+    const { data: machines, error: machinesError } = await supabase
+      .from('machines')
+      .select('id, name, numberOfMatrices')
+      .eq('companyId', companyId)
+      .in('id', uniqueMachineIds);
+
+    if (machinesError) {
+      console.error('❌ Error fetching machines:', machinesError);
+      return res.status(500).json({
+        success: false,
+        error: machinesError.message,
+      });
+    }
+
+    // Create machine map with matrix counts
+    const machineMap = new Map<string, { name: string; numberOfMatrices: number }>();
+    for (const machine of machines || []) {
+      machineMap.set(machine.id, {
+        name: machine.name,
+        numberOfMatrices: machine.numberOfMatrices || 1,
+      });
+    }
+
+    console.log('🏭 Machine matrices map for Pareto:', Object.fromEntries(machineMap));
+
+    // Aggregate by stop reason with weighted duration
     const reasonMap = new Map<string, { reasonId: string; reasonName: string; duration: number }>();
 
     for (const log of timeLogs || []) {
@@ -78,14 +107,24 @@ export const getParetoData = async (req: Request, res: Response) => {
       }
 
       if (duration > 0) {
+        const machineInfo = machineMap.get(log.machineId);
+        if (!machineInfo) {
+          console.log(`⚠️ Machine not found for log:`, { machineId: log.machineId });
+          continue;
+        }
+
+        // Calculate weighted duration (consider if it affects all matrices or just one)
+        const matricesAffected = log.matrixId ? 1 : machineInfo.numberOfMatrices;
+        const weightedDuration = duration * matricesAffected;
+
         if (reasonMap.has(reasonId)) {
           const existing = reasonMap.get(reasonId)!;
-          existing.duration += duration;
+          existing.duration += weightedDuration;
         } else {
           reasonMap.set(reasonId, {
             reasonId,
             reasonName,
-            duration,
+            duration: weightedDuration,
           });
         }
       } else {
