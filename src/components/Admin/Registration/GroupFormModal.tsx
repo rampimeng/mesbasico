@@ -326,13 +326,13 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
             <div className="border border-gray-300 rounded-lg p-4 max-h-48 overflow-y-auto">
               {loadingStopReasons ? (
                 <p className="text-sm text-gray-500 text-center py-4">Carregando motivos...</p>
-              ) : stopReasons.length === 0 ? (
+              ) : stopReasons.filter(r => r.name !== 'Turno Encerrado').length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-4">
                   Nenhum motivo de parada cadastrado ainda
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {stopReasons.map((reason) => (
+                  {stopReasons.filter(reason => reason.name !== 'Turno Encerrado').map((reason) => (
                     <label
                       key={reason.id}
                       className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
