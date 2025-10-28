@@ -22,7 +22,7 @@ interface RegistrationStore {
 
   // Grupos/Células
   getGroups: (companyId: string) => Group[];
-  addGroup: (group: Omit<Group, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addGroup: (group: Omit<Group, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Group>;
   updateGroup: (id: string, group: Partial<Group>) => Promise<void>;
   deleteGroup: (id: string) => Promise<void>;
 
@@ -134,6 +134,8 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
       if (newGroup.operatorIds && newGroup.operatorIds.length > 0) {
         await get().loadOperators();
       }
+
+      return newGroup;
     } catch (error: any) {
       set({ error: error.message });
       throw error;

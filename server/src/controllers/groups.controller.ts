@@ -320,3 +320,121 @@ export const deleteGroup = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Get stop reasons for a group
+export const getGroupStopReasons = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { companyId } = req.user!;
+
+    console.log('📋 Fetching stop reasons for group:', id);
+
+    // Verify group belongs to company
+    const { data: group, error: groupError } = await supabase
+      .from('groups')
+      .select('id')
+      .eq('id', id)
+      .eq('companyId', companyId)
+      .single();
+
+    if (groupError || !group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found',
+      });
+    }
+
+    // Get stop reasons linked to this group
+    const { data: links, error } = await supabase
+      .from('group_stop_reasons')
+      .select('stopReasonId')
+      .eq('groupId', id);
+
+    if (error) {
+      console.error('❌ Error fetching group stop reasons:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    const stopReasonIds = links?.map((link: any) => link.stopReasonId) || [];
+
+    console.log(`✅ Found ${stopReasonIds.length} stop reasons for group`);
+
+    res.json({
+      success: true,
+      data: stopReasonIds,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch group stop reasons',
+    });
+  }
+};
+
+// Update stop reasons for a group
+export const updateGroupStopReasons = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { companyId } = req.user!;
+    const { stopReasonIds = [] } = req.body;
+
+    console.log('🔄 Updating stop reasons for group:', id, 'with:', stopReasonIds);
+
+    // Verify group belongs to company
+    const { data: group, error: groupError } = await supabase
+      .from('groups')
+      .select('id')
+      .eq('id', id)
+      .eq('companyId', companyId)
+      .single();
+
+    if (groupError || !group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found',
+      });
+    }
+
+    // Delete existing stop reason links
+    await supabase
+      .from('group_stop_reasons')
+      .delete()
+      .eq('groupId', id);
+
+    // Insert new stop reason links
+    if (stopReasonIds.length > 0) {
+      const records = stopReasonIds.map((stopReasonId: string) => ({
+        groupId: id,
+        stopReasonId,
+      }));
+
+      const { error: insertError } = await supabase
+        .from('group_stop_reasons')
+        .insert(records);
+
+      if (insertError) {
+        console.error('❌ Error inserting group stop reasons:', insertError);
+        return res.status(400).json({
+          success: false,
+          error: insertError.message,
+        });
+      }
+    }
+
+    console.log('✅ Group stop reasons updated successfully');
+
+    res.json({
+      success: true,
+      data: stopReasonIds,
+      message: 'Group stop reasons updated successfully',
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to update group stop reasons',
+    });
+  }
+};

@@ -15,9 +15,11 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
   const updateGroup = useRegistrationStore((state) => state.updateGroup);
   const getOperators = useRegistrationStore((state) => state.getOperators);
   const getShifts = useRegistrationStore((state) => state.getShifts);
+  const getStopReasons = useRegistrationStore((state) => state.getStopReasons);
 
   const operators = getOperators(company?.id || '');
   const shifts = getShifts(company?.id || '');
+  const stopReasons = getStopReasons(company?.id || '');
 
   const [formData, setFormData] = useState({
     name: group?.name || '',
@@ -25,9 +27,11 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
     shiftId: group?.shiftId || '',
     cyclesPerShift: group?.cyclesPerShift || 0,
     operatorIds: group?.operatorIds || [],
+    stopReasonIds: [] as string[],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loadingStopReasons, setLoadingStopReasons] = useState(false);
 
   useEffect(() => {
     if (group) {
@@ -37,9 +41,35 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
         shiftId: group.shiftId || '',
         cyclesPerShift: group.cyclesPerShift || 0,
         operatorIds: group.operatorIds || [],
+        stopReasonIds: [],
       });
+
+      // Carregar stop reasons vinculados ao grupo
+      loadGroupStopReasons(group.id);
     }
   }, [group]);
+
+  const loadGroupStopReasons = async (groupId: string) => {
+    try {
+      setLoadingStopReasons(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/groups/${groupId}/stop-reasons`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFormData(prev => ({ ...prev, stopReasonIds: data.data || [] }));
+      }
+    } catch (error) {
+      console.error('Error loading group stop reasons:', error);
+    } finally {
+      setLoadingStopReasons(false);
+    }
+  };
 
   const handleOperatorToggle = (operatorId: string) => {
     setFormData((prev) => ({
@@ -47,6 +77,15 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
       operatorIds: prev.operatorIds.includes(operatorId)
         ? prev.operatorIds.filter((id) => id !== operatorId)
         : [...prev.operatorIds, operatorId],
+    }));
+  };
+
+  const handleStopReasonToggle = (stopReasonId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      stopReasonIds: prev.stopReasonIds.includes(stopReasonId)
+        ? prev.stopReasonIds.filter((id) => id !== stopReasonId)
+        : [...prev.stopReasonIds, stopReasonId],
     }));
   };
 
@@ -67,14 +106,29 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
     if (!validateForm() || !company) return;
 
     try {
+      let groupId: string;
+
       if (group) {
         await updateGroup(group.id, formData);
+        groupId = group.id;
       } else {
-        await addGroup({
+        const newGroup = await addGroup({
           companyId: company.id,
           ...formData,
         });
+        groupId = newGroup.id;
       }
+
+      // Salvar stop reasons vinculados ao grupo
+      const token = localStorage.getItem('token');
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/groups/${groupId}/stop-reasons`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ stopReasonIds: formData.stopReasonIds }),
+      });
 
       // Só fecha o modal após a operação completar com sucesso
       onClose();
@@ -214,6 +268,48 @@ const GroupFormModal = ({ group, onClose }: GroupFormModalProps) => {
             </div>
             <p className="mt-1 text-sm text-gray-500">
               Selecione os operadores que fazem parte desta célula
+            </p>
+          </div>
+
+          {/* Motivos de Parada */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Motivos de Parada Permitidos
+            </label>
+            <div className="border border-gray-300 rounded-lg p-4 max-h-48 overflow-y-auto">
+              {loadingStopReasons ? (
+                <p className="text-sm text-gray-500 text-center py-4">Carregando motivos...</p>
+              ) : stopReasons.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  Nenhum motivo de parada cadastrado ainda
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {stopReasons.map((reason) => (
+                    <label
+                      key={reason.id}
+                      className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.stopReasonIds.includes(reason.id)}
+                        onChange={() => handleStopReasonToggle(reason.id)}
+                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{reason.name}</p>
+                        {reason.description && (
+                          <p className="text-xs text-gray-500">{reason.description}</p>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-gray-500">
+              Selecione quais motivos de parada os operadores podem escolher nesta célula.
+              Se nenhum for selecionado, todos os motivos estarão disponíveis.
             </p>
           </div>
 

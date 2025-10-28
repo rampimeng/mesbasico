@@ -4,8 +4,110 @@ import supabase from '../config/supabase';
 // Get all stop reasons for a company
 export const getAllStopReasons = async (req: Request, res: Response) => {
   try {
-    const { companyId } = req.user!;
+    const { companyId, id: userId, role } = req.user!;
 
+    console.log('📋 Fetching stop reasons for user:', { userId, role, companyId });
+
+    // Se for OPERADOR, filtrar apenas motivos vinculados às suas células
+    if (role === 'OPERATOR') {
+      // 1. Buscar grupos do operador
+      const { data: operatorGroups, error: groupsError } = await supabase
+        .from('operator_groups')
+        .select('groupId')
+        .eq('userId', userId);
+
+      if (groupsError) {
+        console.error('❌ Error fetching operator groups:', groupsError);
+        return res.status(500).json({
+          success: false,
+          error: groupsError.message,
+        });
+      }
+
+      const groupIds = operatorGroups?.map((og: any) => og.groupId) || [];
+      console.log('📍 Operator groups:', groupIds);
+
+      if (groupIds.length === 0) {
+        // Operador não vinculado a nenhum grupo - retorna vazio
+        console.log('⚠️ Operator has no groups assigned');
+        return res.json({
+          success: true,
+          data: [],
+        });
+      }
+
+      // 2. Buscar stop reasons vinculados aos grupos do operador
+      const { data: groupStopReasons, error: grsError } = await supabase
+        .from('group_stop_reasons')
+        .select('stopReasonId')
+        .in('groupId', groupIds);
+
+      if (grsError) {
+        console.error('❌ Error fetching group stop reasons:', grsError);
+        return res.status(500).json({
+          success: false,
+          error: grsError.message,
+        });
+      }
+
+      const stopReasonIds = [...new Set(groupStopReasons?.map((gsr: any) => gsr.stopReasonId) || [])];
+      console.log('📋 Stop reasons IDs for operator groups:', stopReasonIds);
+
+      if (stopReasonIds.length === 0) {
+        // Nenhum motivo vinculado aos grupos - retorna todos os motivos da empresa
+        console.log('⚠️ No stop reasons linked to operator groups - returning all company stop reasons');
+        const { data: allStopReasons, error: allError } = await supabase
+          .from('stop_reasons')
+          .select('*')
+          .eq('companyId', companyId)
+          .order('createdAt', { ascending: false });
+
+        if (allError) {
+          return res.status(500).json({
+            success: false,
+            error: allError.message,
+          });
+        }
+
+        const mapped = allStopReasons?.map(reason => ({
+          ...reason,
+          ignoreInPareto: reason.excludeFromPareto,
+        }));
+
+        return res.json({
+          success: true,
+          data: mapped,
+        });
+      }
+
+      // 3. Buscar detalhes dos stop reasons
+      const { data: stopReasons, error } = await supabase
+        .from('stop_reasons')
+        .select('*')
+        .in('id', stopReasonIds)
+        .order('createdAt', { ascending: false });
+
+      if (error) {
+        return res.status(500).json({
+          success: false,
+          error: error.message,
+        });
+      }
+
+      const mappedStopReasons = stopReasons?.map(reason => ({
+        ...reason,
+        ignoreInPareto: reason.excludeFromPareto,
+      }));
+
+      console.log(`✅ Returning ${mappedStopReasons?.length || 0} stop reasons for operator`);
+
+      return res.json({
+        success: true,
+        data: mappedStopReasons,
+      });
+    }
+
+    // Para ADMIN e SUPERVISOR - retornar todos os motivos da empresa
     const { data: stopReasons, error } = await supabase
       .from('stop_reasons')
       .select('*')
@@ -24,6 +126,8 @@ export const getAllStopReasons = async (req: Request, res: Response) => {
       ...reason,
       ignoreInPareto: reason.excludeFromPareto,
     }));
+
+    console.log(`✅ Returning ${mappedStopReasons?.length || 0} stop reasons for ${role}`);
 
     res.json({
       success: true,
