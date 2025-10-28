@@ -592,7 +592,7 @@ export const endSession = async (req: Request, res: Response) => {
     }
 
     // Get active session
-    const { data: sessions } = await supabase
+    const { data: sessions, error: sessionError } = await supabase
       .from('production_sessions')
       .select('*')
       .eq('machineId', machineId)
@@ -600,6 +600,23 @@ export const endSession = async (req: Request, res: Response) => {
       .eq('active', true)
       .order('createdAt', { ascending: false })
       .limit(1);
+
+    console.log('🔍 Query result for active session:', {
+      machineId,
+      operatorId: effectiveOperatorId,
+      foundSessions: sessions?.length || 0,
+      error: sessionError
+    });
+
+    // Debug: Get ALL sessions for this machine (to see what exists)
+    const { data: allSessions } = await supabase
+      .from('production_sessions')
+      .select('*')
+      .eq('machineId', machineId)
+      .order('createdAt', { ascending: false })
+      .limit(5);
+
+    console.log('📋 All recent sessions for this machine:', allSessions);
 
     const activeSession = sessions?.[0];
 
