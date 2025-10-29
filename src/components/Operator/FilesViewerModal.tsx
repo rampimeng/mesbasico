@@ -211,7 +211,12 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
               <>
                 <div
                   ref={containerRef}
-                  className="flex-1 overflow-auto flex items-center justify-center bg-gray-100 p-4"
+                  className="flex-1 overflow-auto bg-gray-100 p-4"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center'
+                  }}
                 >
                   <Document
                     file={pdfUrl}
