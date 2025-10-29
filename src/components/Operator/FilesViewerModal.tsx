@@ -19,7 +19,7 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
-  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const [scale, setScale] = useState<number>(1.0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,23 +36,37 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   }, [pdfUrl]);
 
   useEffect(() => {
-    // Update container width when PDF is selected
-    if (pdfUrl && containerRef.current) {
-      const updateWidth = () => {
-        if (containerRef.current) {
-          // Get the actual width of the container, subtract padding
-          const width = containerRef.current.clientWidth - 48; // 48px for padding (24px each side)
-          console.log('📐 Container width calculated:', width);
-          setContainerWidth(width);
-        }
-      };
+    // Calculate optimal scale when PDF is selected
+    const calculateScale = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.clientWidth - 48; // Subtract padding
+        const containerHeight = containerRef.current.clientHeight - 48;
 
+        // Tamanho padrão de página A4 em pixels (210mm x 297mm em 96 DPI)
+        const defaultPdfWidth = 595; // aproximadamente 210mm
+        const defaultPdfHeight = 842; // aproximadamente 297mm
+
+        // Calcula scales necessários para caber horizontal e verticalmente
+        const scaleForWidth = containerWidth / defaultPdfWidth;
+        const scaleForHeight = containerHeight / defaultPdfHeight;
+
+        // Usa o menor scale para garantir que a página inteira fique visível
+        const optimalScale = Math.min(scaleForWidth, scaleForHeight, 1.5); // Max 1.5x
+
+        console.log('📐 Container dimensions:', { width: containerWidth, height: containerHeight });
+        console.log('📊 Calculated scale:', optimalScale);
+
+        setScale(optimalScale);
+      }
+    };
+
+    if (pdfUrl) {
       // Use setTimeout to ensure DOM is ready
-      setTimeout(updateWidth, 100);
+      setTimeout(calculateScale, 100);
 
-      window.addEventListener('resize', updateWidth);
+      window.addEventListener('resize', calculateScale);
       return () => {
-        window.removeEventListener('resize', updateWidth);
+        window.removeEventListener('resize', calculateScale);
       };
     }
   }, [pdfUrl]);
@@ -114,7 +128,7 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
     setSelectedFile(null);
     setNumPages(null);
     setPageNumber(1);
-    setContainerWidth(null);
+    setScale(1.0);
   };
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -184,44 +198,37 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
                   ref={containerRef}
                   className="flex-1 overflow-auto flex items-center justify-center bg-gray-100 p-4"
                 >
-                  {!containerWidth ? (
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                      <p className="text-gray-600 mt-2">Preparando visualização...</p>
-                    </div>
-                  ) : (
-                    <Document
-                      file={pdfUrl}
-                      onLoadSuccess={onDocumentLoadSuccess}
-                      onLoadError={onDocumentLoadError}
-                      loading={
-                        <div className="text-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                          <p className="text-gray-600 mt-2">Carregando PDF...</p>
-                        </div>
-                      }
-                      error={
-                        <div className="text-center p-4">
-                          <p className="text-red-600 font-semibold text-lg">Erro ao carregar PDF</p>
-                          <p className="text-gray-600 text-sm mt-2">Verifique o console para mais detalhes</p>
-                          <button
-                            onClick={handleBack}
-                            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                          >
-                            Voltar
-                          </button>
-                        </div>
-                      }
-                    >
-                      <Page
-                        pageNumber={pageNumber}
-                        renderTextLayer={false}
-                        renderAnnotationLayer={false}
-                        width={containerWidth}
-                        className="shadow-lg"
-                      />
-                    </Document>
-                  )}
+                  <Document
+                    file={pdfUrl}
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    onLoadError={onDocumentLoadError}
+                    loading={
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="text-gray-600 mt-2">Carregando PDF...</p>
+                      </div>
+                    }
+                    error={
+                      <div className="text-center p-4">
+                        <p className="text-red-600 font-semibold text-lg">Erro ao carregar PDF</p>
+                        <p className="text-gray-600 text-sm mt-2">Verifique o console para mais detalhes</p>
+                        <button
+                          onClick={handleBack}
+                          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        >
+                          Voltar
+                        </button>
+                      </div>
+                    }
+                  >
+                    <Page
+                      pageNumber={pageNumber}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                      scale={scale}
+                      className="shadow-lg"
+                    />
+                  </Document>
                 </div>
 
                 {/* Navigation Controls */}
