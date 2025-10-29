@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, FileText, Eye, ArrowLeft } from 'lucide-react';
+import { X, FileText, Eye, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Document, Page, pdfjs } from 'react-pdf';
 import { filesService } from '@/services/filesService';
 import { File as FileType } from '@/types';
+
+// Configure PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface FilesViewerModalProps {
   onClose: () => void;
@@ -11,21 +15,14 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   const [files, setFiles] = useState<FileType[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
   const [loadingPdf, setLoadingPdf] = useState(false);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pageNumber, setPageNumber] = useState(1);
 
   useEffect(() => {
     loadFiles();
   }, []);
-
-  useEffect(() => {
-    // Cleanup blob URL when component unmounts or file changes
-    return () => {
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-      }
-    };
-  }, [pdfUrl]);
 
   const loadFiles = async () => {
     try {
@@ -42,6 +39,7 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   const handleFileSelect = async (file: FileType) => {
     setSelectedFile(file);
     setLoadingPdf(true);
+    setPageNumber(1);
 
     try {
       // Fetch PDF with authentication
@@ -55,10 +53,9 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
         throw new Error('Erro ao carregar arquivo');
       }
 
-      // Create blob URL
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
+      // Get PDF as ArrayBuffer for react-pdf
+      const arrayBuffer = await response.arrayBuffer();
+      setPdfData(arrayBuffer);
     } catch (error) {
       console.error('Error loading PDF:', error);
       alert('Erro ao carregar o arquivo. Por favor, tente novamente.');
@@ -69,11 +66,18 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   };
 
   const handleBack = () => {
-    if (pdfUrl) {
-      URL.revokeObjectURL(pdfUrl);
-      setPdfUrl(null);
-    }
+    setPdfData(null);
     setSelectedFile(null);
+    setNumPages(null);
+    setPageNumber(1);
+  };
+
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+  };
+
+  const changePage = (offset: number) => {
+    setPageNumber(prevPageNumber => Math.min(Math.max(prevPageNumber + offset, 1), numPages || 1));
   };
 
   return (
@@ -114,7 +118,7 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden flex flex-col">
           {selectedFile ? (
             // PDF Viewer
             loadingPdf ? (
@@ -124,12 +128,55 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
                   <p className="text-gray-600 mt-4 text-lg">Carregando arquivo...</p>
                 </div>
               </div>
-            ) : pdfUrl ? (
-              <iframe
-                src={pdfUrl}
-                className="w-full h-full"
-                title={selectedFile.name}
-              />
+            ) : pdfData ? (
+              <>
+                <div className="flex-1 overflow-auto flex items-center justify-center bg-gray-100 p-4">
+                  <Document
+                    file={{ data: pdfData }}
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    loading={
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                      </div>
+                    }
+                    error={
+                      <div className="text-center p-4">
+                        <p className="text-red-600">Erro ao carregar PDF</p>
+                      </div>
+                    }
+                  >
+                    <Page
+                      pageNumber={pageNumber}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                      width={Math.min(window.innerWidth - 100, 900)}
+                    />
+                  </Document>
+                </div>
+
+                {/* Navigation Controls */}
+                {numPages && numPages > 1 && (
+                  <div className="bg-gray-50 border-t border-gray-200 p-4 flex items-center justify-center gap-4">
+                    <button
+                      onClick={() => changePage(-1)}
+                      disabled={pageNumber <= 1}
+                      className="p-2 rounded-lg bg-blue-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <span className="text-lg font-semibold min-w-[120px] text-center">
+                      Página {pageNumber} de {numPages}
+                    </span>
+                    <button
+                      onClick={() => changePage(1)}
+                      disabled={pageNumber >= numPages}
+                      className="p-2 rounded-lg bg-blue-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
+                  </div>
+                )}
+              </>
             ) : null
           ) : (
             // Files List
