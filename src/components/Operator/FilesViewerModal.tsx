@@ -42,23 +42,30 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
     setPageNumber(1);
 
     try {
+      console.log('📄 Loading PDF:', file.name, file.fileUrl);
+      const url = filesService.getFileUrl(file.fileUrl);
+      console.log('🔗 PDF URL:', url);
+
       // Fetch PDF with authentication
-      const response = await fetch(filesService.getFileUrl(file.fileUrl), {
+      const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
+      console.log('📡 Response status:', response.status, response.statusText);
+
       if (!response.ok) {
-        throw new Error('Erro ao carregar arquivo');
+        throw new Error(`Erro ao carregar arquivo: ${response.status} ${response.statusText}`);
       }
 
       // Get PDF as ArrayBuffer for react-pdf
       const arrayBuffer = await response.arrayBuffer();
+      console.log('✅ PDF loaded, size:', arrayBuffer.byteLength, 'bytes');
       setPdfData(arrayBuffer);
     } catch (error) {
-      console.error('Error loading PDF:', error);
-      alert('Erro ao carregar o arquivo. Por favor, tente novamente.');
+      console.error('❌ Error loading PDF:', error);
+      alert(`Erro ao carregar o arquivo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
       setSelectedFile(null);
     } finally {
       setLoadingPdf(false);
@@ -73,7 +80,12 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   };
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    console.log('✅ PDF document loaded successfully, pages:', numPages);
     setNumPages(numPages);
+  };
+
+  const onDocumentLoadError = (error: Error) => {
+    console.error('❌ PDF.js error:', error);
   };
 
   const changePage = (offset: number) => {
@@ -134,6 +146,7 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
                   <Document
                     file={{ data: pdfData }}
                     onLoadSuccess={onDocumentLoadSuccess}
+                    onLoadError={onDocumentLoadError}
                     loading={
                       <div className="text-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -141,7 +154,14 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
                     }
                     error={
                       <div className="text-center p-4">
-                        <p className="text-red-600">Erro ao carregar PDF</p>
+                        <p className="text-red-600 font-semibold text-lg">Erro ao carregar PDF</p>
+                        <p className="text-gray-600 text-sm mt-2">Verifique o console para mais detalhes</p>
+                        <button
+                          onClick={handleBack}
+                          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        >
+                          Voltar
+                        </button>
                       </div>
                     }
                   >
