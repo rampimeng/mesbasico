@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, FileText, Eye, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { filesService } from '@/services/filesService';
@@ -19,6 +19,8 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
+  const [containerWidth, setContainerWidth] = useState<number>(800);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadFiles();
@@ -32,6 +34,24 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
       }
     };
   }, [pdfUrl]);
+
+  useEffect(() => {
+    // Update container width on mount and resize
+    const updateWidth = () => {
+      if (containerRef.current) {
+        // Subtract padding and some margin for safety
+        const width = containerRef.current.clientWidth - 32;
+        setContainerWidth(width);
+      }
+    };
+
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+
+    return () => {
+      window.removeEventListener('resize', updateWidth);
+    };
+  }, [selectedFile]);
 
   const loadFiles = async () => {
     try {
@@ -155,7 +175,10 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
               </div>
             ) : pdfUrl ? (
               <>
-                <div className="flex-1 overflow-auto flex items-center justify-center bg-gray-100 p-4">
+                <div
+                  ref={containerRef}
+                  className="flex-1 overflow-auto flex items-center justify-center bg-gray-100 p-4"
+                >
                   <Document
                     file={pdfUrl}
                     onLoadSuccess={onDocumentLoadSuccess}
@@ -182,7 +205,8 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
                       pageNumber={pageNumber}
                       renderTextLayer={false}
                       renderAnnotationLayer={false}
-                      width={Math.min(window.innerWidth - 100, 900)}
+                      width={containerWidth}
+                      className="shadow-lg"
                     />
                   </Document>
                 </div>
