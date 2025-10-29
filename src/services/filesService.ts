@@ -87,9 +87,11 @@ export const filesService = {
     return data;
   },
 
-  // Get file URL for viewing/downloading
+  // Get file URL for inline viewing (requires auth header in fetch)
   getFileUrl(fileUrl: string): string {
-    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001';
-    return `${baseUrl}${fileUrl}`;
+    // Extract filename from path (e.g., "/uploads/123456-file.pdf" -> "123456-file.pdf")
+    const filename = fileUrl.split('/').pop();
+    // Use the new endpoint that sets proper headers for inline display
+    return `${API_URL}/files/view/${filename}`;
   },
 };

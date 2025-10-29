@@ -384,3 +384,30 @@ export const updateFile = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Serve file with proper headers for inline viewing
+export const serveFile = async (req: Request, res: Response) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join(__dirname, '../../uploads', filename);
+
+    console.log('📄 Serving file:', { filename, filePath });
+
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).send('Arquivo não encontrado');
+    }
+
+    // Set headers for inline display
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cache-Control', 'no-cache');
+
+    // Stream the file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  } catch (error: any) {
+    console.error('❌ Exception in serveFile:', error);
+    res.status(500).send('Erro ao servir arquivo');
+  }
+};

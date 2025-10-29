@@ -11,10 +11,21 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   const [files, setFiles] = useState<FileType[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
 
   useEffect(() => {
     loadFiles();
   }, []);
+
+  useEffect(() => {
+    // Cleanup blob URL when component unmounts or file changes
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [pdfUrl]);
 
   const loadFiles = async () => {
     try {
@@ -28,11 +39,40 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
     }
   };
 
-  const handleFileSelect = (file: FileType) => {
+  const handleFileSelect = async (file: FileType) => {
     setSelectedFile(file);
+    setLoadingPdf(true);
+
+    try {
+      // Fetch PDF with authentication
+      const response = await fetch(filesService.getFileUrl(file.fileUrl), {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao carregar arquivo');
+      }
+
+      // Create blob URL
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setPdfUrl(url);
+    } catch (error) {
+      console.error('Error loading PDF:', error);
+      alert('Erro ao carregar o arquivo. Por favor, tente novamente.');
+      setSelectedFile(null);
+    } finally {
+      setLoadingPdf(false);
+    }
   };
 
   const handleBack = () => {
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
+    }
     setSelectedFile(null);
   };
 
@@ -77,11 +117,20 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
         <div className="flex-1 overflow-hidden">
           {selectedFile ? (
             // PDF Viewer
-            <iframe
-              src={filesService.getFileUrl(selectedFile.fileUrl)}
-              className="w-full h-full"
-              title={selectedFile.name}
-            />
+            loadingPdf ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-600 mt-4 text-lg">Carregando arquivo...</p>
+                </div>
+              </div>
+            ) : pdfUrl ? (
+              <iframe
+                src={pdfUrl}
+                className="w-full h-full"
+                title={selectedFile.name}
+              />
+            ) : null
           ) : (
             // Files List
             <div className="p-6 h-full overflow-y-auto">

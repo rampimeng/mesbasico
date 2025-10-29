@@ -6,6 +6,7 @@ import {
   deleteFile,
   updateFile,
   upload,
+  serveFile,
 } from '../controllers/files.controller';
 import { authenticate, authorize } from '../middleware/auth';
 import { UserRole } from '../types';
@@ -14,6 +15,9 @@ const router = Router();
 
 // All routes require authentication
 router.use(authenticate);
+
+// Serve file with inline headers (accessible to all authenticated users)
+router.get('/view/:filename', serveFile);
 
 // Operator can view files linked to their groups
 router.get('/operator/my-files', authorize(UserRole.OPERATOR), getOperatorFiles);
