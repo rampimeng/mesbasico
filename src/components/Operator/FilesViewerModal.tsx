@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, FileText, Eye, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, FileText, Eye, ArrowLeft, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { filesService } from '@/services/filesService';
 import { File as FileType } from '@/types';
@@ -19,7 +19,8 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
-  const [scale, setScale] = useState<number>(1.0);
+  const [autoScale, setAutoScale] = useState<number>(1.0); // Scale calculado automaticamente
+  const [scale, setScale] = useState<number>(1.0); // Scale atual (pode ser ajustado pelo usuário)
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,9 +55,10 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
         const optimalScale = Math.min(scaleForWidth, scaleForHeight, 1.5); // Max 1.5x
 
         console.log('📐 Container dimensions:', { width: containerWidth, height: containerHeight });
-        console.log('📊 Calculated scale:', optimalScale);
+        console.log('📊 Calculated auto scale:', optimalScale);
 
-        setScale(optimalScale);
+        setAutoScale(optimalScale);
+        setScale(optimalScale); // Inicia com o scale automático
       }
     };
 
@@ -129,6 +131,7 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
     setNumPages(null);
     setPageNumber(1);
     setScale(1.0);
+    setAutoScale(1.0);
   };
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -142,6 +145,18 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
 
   const changePage = (offset: number) => {
     setPageNumber(prevPageNumber => Math.min(Math.max(prevPageNumber + offset, 1), numPages || 1));
+  };
+
+  const handleZoomIn = () => {
+    setScale(prevScale => Math.min(prevScale + 0.2, 3.0)); // Max 3x zoom
+  };
+
+  const handleZoomOut = () => {
+    setScale(prevScale => Math.max(prevScale - 0.2, 0.3)); // Min 0.3x zoom
+  };
+
+  const handleResetZoom = () => {
+    setScale(autoScale); // Volta ao scale automático
   };
 
   return (
@@ -231,28 +246,63 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
                   </Document>
                 </div>
 
-                {/* Navigation Controls */}
-                {numPages && numPages > 1 && (
-                  <div className="bg-gray-50 border-t border-gray-200 p-4 flex items-center justify-center gap-4">
-                    <button
-                      onClick={() => changePage(-1)}
-                      disabled={pageNumber <= 1}
-                      className="p-2 rounded-lg bg-blue-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
-                    >
-                      <ChevronLeft className="w-6 h-6" />
-                    </button>
-                    <span className="text-lg font-semibold min-w-[120px] text-center">
-                      Página {pageNumber} de {numPages}
-                    </span>
-                    <button
-                      onClick={() => changePage(1)}
-                      disabled={pageNumber >= numPages}
-                      className="p-2 rounded-lg bg-blue-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
-                    >
-                      <ChevronRight className="w-6 h-6" />
-                    </button>
+                {/* Controls Bar - Always visible when PDF is loaded */}
+                <div className="bg-gray-50 border-t border-gray-200 p-4">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    {/* Zoom Controls */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleZoomOut}
+                        disabled={scale <= 0.3}
+                        className="p-2 rounded-lg bg-gray-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
+                        title="Diminuir Zoom"
+                      >
+                        <ZoomOut className="w-5 h-5" />
+                      </button>
+                      <span className="text-sm font-medium min-w-[60px] text-center">
+                        {Math.round(scale * 100)}%
+                      </span>
+                      <button
+                        onClick={handleZoomIn}
+                        disabled={scale >= 3.0}
+                        className="p-2 rounded-lg bg-gray-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
+                        title="Aumentar Zoom"
+                      >
+                        <ZoomIn className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={handleResetZoom}
+                        className="p-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition-colors ml-2"
+                        title="Ajustar à Tela"
+                      >
+                        <Maximize2 className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* Page Navigation - Only show if multiple pages */}
+                    {numPages && numPages > 1 && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => changePage(-1)}
+                          disabled={pageNumber <= 1}
+                          className="p-2 rounded-lg bg-blue-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <span className="text-sm font-semibold min-w-[100px] text-center">
+                          Página {pageNumber} de {numPages}
+                        </span>
+                        <button
+                          onClick={() => changePage(1)}
+                          disabled={pageNumber >= numPages}
+                          className="p-2 rounded-lg bg-blue-600 text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </>
             ) : null
           ) : (
