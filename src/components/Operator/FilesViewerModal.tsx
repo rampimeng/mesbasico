@@ -19,7 +19,7 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
-  const [containerWidth, setContainerWidth] = useState<number>(800);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,22 +36,26 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   }, [pdfUrl]);
 
   useEffect(() => {
-    // Update container width on mount and resize
-    const updateWidth = () => {
-      if (containerRef.current) {
-        // Subtract padding and some margin for safety
-        const width = containerRef.current.clientWidth - 32;
-        setContainerWidth(width);
-      }
-    };
+    // Update container width when PDF is selected
+    if (pdfUrl && containerRef.current) {
+      const updateWidth = () => {
+        if (containerRef.current) {
+          // Get the actual width of the container, subtract padding
+          const width = containerRef.current.clientWidth - 48; // 48px for padding (24px each side)
+          console.log('📐 Container width calculated:', width);
+          setContainerWidth(width);
+        }
+      };
 
-    updateWidth();
-    window.addEventListener('resize', updateWidth);
+      // Use setTimeout to ensure DOM is ready
+      setTimeout(updateWidth, 100);
 
-    return () => {
-      window.removeEventListener('resize', updateWidth);
-    };
-  }, [selectedFile]);
+      window.addEventListener('resize', updateWidth);
+      return () => {
+        window.removeEventListener('resize', updateWidth);
+      };
+    }
+  }, [pdfUrl]);
 
   const loadFiles = async () => {
     try {
@@ -110,6 +114,7 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
     setSelectedFile(null);
     setNumPages(null);
     setPageNumber(1);
+    setContainerWidth(null);
   };
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -179,36 +184,44 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
                   ref={containerRef}
                   className="flex-1 overflow-auto flex items-center justify-center bg-gray-100 p-4"
                 >
-                  <Document
-                    file={pdfUrl}
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    onLoadError={onDocumentLoadError}
-                    loading={
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                      </div>
-                    }
-                    error={
-                      <div className="text-center p-4">
-                        <p className="text-red-600 font-semibold text-lg">Erro ao carregar PDF</p>
-                        <p className="text-gray-600 text-sm mt-2">Verifique o console para mais detalhes</p>
-                        <button
-                          onClick={handleBack}
-                          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                          Voltar
-                        </button>
-                      </div>
-                    }
-                  >
-                    <Page
-                      pageNumber={pageNumber}
-                      renderTextLayer={false}
-                      renderAnnotationLayer={false}
-                      width={containerWidth}
-                      className="shadow-lg"
-                    />
-                  </Document>
+                  {!containerWidth ? (
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="text-gray-600 mt-2">Preparando visualização...</p>
+                    </div>
+                  ) : (
+                    <Document
+                      file={pdfUrl}
+                      onLoadSuccess={onDocumentLoadSuccess}
+                      onLoadError={onDocumentLoadError}
+                      loading={
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                          <p className="text-gray-600 mt-2">Carregando PDF...</p>
+                        </div>
+                      }
+                      error={
+                        <div className="text-center p-4">
+                          <p className="text-red-600 font-semibold text-lg">Erro ao carregar PDF</p>
+                          <p className="text-gray-600 text-sm mt-2">Verifique o console para mais detalhes</p>
+                          <button
+                            onClick={handleBack}
+                            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                          >
+                            Voltar
+                          </button>
+                        </div>
+                      }
+                    >
+                      <Page
+                        pageNumber={pageNumber}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                        width={containerWidth}
+                        className="shadow-lg"
+                      />
+                    </Document>
+                  )}
                 </div>
 
                 {/* Navigation Controls */}
