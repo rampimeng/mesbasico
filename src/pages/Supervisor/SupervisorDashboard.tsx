@@ -7,6 +7,7 @@ import OperatorMonitoring from '@/components/Supervisor/OperatorMonitoring';
 import RegistrationPage from '@/pages/Admin/RegistrationPage';
 import PDCAPage from '@/pages/Admin/PDCAPage';
 import AuditPage from '@/pages/Admin/AuditPage';
+import FilesManagement from '@/pages/Admin/FilesManagement';
 import { ArrowLeft } from 'lucide-react';
 
 const SupervisorDashboard = () => {
@@ -89,6 +90,7 @@ const SupervisorDashboard = () => {
                   <Route path="/settings" element={<RegistrationPage />} />
                   {company?.pdcaEnabled && <Route path="/pdca" element={<PDCAPage />} />}
                   <Route path="/audit" element={<AuditPage />} />
+                  <Route path="/files" element={<FilesManagement />} />
                 </>
               )}
               <Route path="*" element={<Navigate to={user?.role === 'ADMIN' ? '/admin' : '/supervisor'} replace />} />

@@ -10,6 +10,7 @@ import {
   TrendingUp,
   ClipboardList,
   Tv,
+  FileText,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -41,7 +42,8 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
     }
 
     menuItems.push(
-      { icon: ClipboardList, label: 'Auditoria', path: '/admin/audit' }
+      { icon: ClipboardList, label: 'Auditoria', path: '/admin/audit' },
+      { icon: FileText, label: 'Arquivos', path: '/admin/files' }
     );
   }
 

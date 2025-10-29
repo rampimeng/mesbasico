@@ -8,6 +8,7 @@ import MachineCard from '@/components/Operator/MachineCard';
 import EmergencyModal from '@/components/Operator/EmergencyModal';
 import ConfirmEndShiftModal from '@/components/Operator/ConfirmEndShiftModal';
 import HelpChainModal from '@/components/Operator/HelpChainModal';
+import FilesViewerModal from '@/components/Operator/FilesViewerModal';
 import { AlertTriangle, LogOut, Play, RefreshCw, Clock, Maximize, Minimize, LifeBuoy } from 'lucide-react';
 import { productionService } from '@/services/productionService';
 
@@ -20,6 +21,7 @@ const OperatorDashboard = () => {
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [showConfirmEndShiftModal, setShowConfirmEndShiftModal] = useState(false);
   const [showHelpChainModal, setShowHelpChainModal] = useState(false);
+  const [showFilesModal, setShowFilesModal] = useState(false);
   const [blockedMessage, setBlockedMessage] = useState('');
   const [todayCycles, setTodayCycles] = useState(getTodayCycles(company?.id || '', user?.id));
 
@@ -492,8 +494,7 @@ const OperatorDashboard = () => {
         // TODO: Implementar lógica de notificação de qualidade
         break;
       case 'files':
-        showNotification('Abrindo arquivos...', 'success');
-        // TODO: Implementar navegação para arquivos/documentos
+        setShowFilesModal(true);
         break;
       default:
         break;
@@ -740,6 +741,13 @@ const OperatorDashboard = () => {
         <HelpChainModal
           onClose={() => setShowHelpChainModal(false)}
           onSelect={handleHelpChainSelect}
+        />
+      )}
+
+      {/* Files Viewer Modal */}
+      {showFilesModal && (
+        <FilesViewerModal
+          onClose={() => setShowFilesModal(false)}
         />
       )}
 
