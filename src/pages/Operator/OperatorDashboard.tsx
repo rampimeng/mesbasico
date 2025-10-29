@@ -601,7 +601,7 @@ const OperatorDashboard = () => {
             <div className="flex items-center gap-3 ml-6">
               <button
                 onClick={() => setShowHelpChainModal(true)}
-                className="btn-warning flex items-center gap-2"
+                className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
                 title="Cadeia de Ajuda"
               >
                 <LifeBuoy className="w-5 h-5" />
