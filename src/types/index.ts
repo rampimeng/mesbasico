@@ -281,3 +281,17 @@ export interface MFASetup {
   secret: string;
   qrCode: string;
 }
+
+// Files for Operators
+export interface File {
+  id: string;
+  companyId: string;
+  name: string;
+  description?: string;
+  fileUrl: string;
+  fileSize?: number;
+  mimeType: string;
+  groupIds: string[]; // IDs das células vinculadas
+  createdAt: Date;
+  updatedAt: Date;
+}

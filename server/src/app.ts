@@ -1,5 +1,6 @@
 import express, { Express } from 'express';
 import cors from 'cors';
+import path from 'path';
 import { config } from './config/env';
 import { requestLogger } from './middleware/logger';
 import { errorHandler } from './middleware/errorHandler';
@@ -16,6 +17,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check na raiz (para Easypanel/Docker)
 app.get('/health', (_req, res) => {
