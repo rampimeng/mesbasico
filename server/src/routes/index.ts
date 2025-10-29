@@ -72,4 +72,6 @@ router.use('/maintenance', maintenanceRoutes);
 router.use('/migrations', migrationsRoutes);
 router.use('/files', filesRoutes);
 
+console.log('📁 Files routes registered at /api/files');
+
 export default router;
