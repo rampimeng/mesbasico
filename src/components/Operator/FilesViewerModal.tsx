@@ -15,7 +15,7 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   const [files, setFiles] = useState<FileType[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
-  const [pdfData, setPdfData] = useState<ArrayBuffer | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
@@ -23,6 +23,15 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   useEffect(() => {
     loadFiles();
   }, []);
+
+  useEffect(() => {
+    // Cleanup blob URL when component unmounts or file changes
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [pdfUrl]);
 
   const loadFiles = async () => {
     try {
@@ -59,10 +68,11 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
         throw new Error(`Erro ao carregar arquivo: ${response.status} ${response.statusText}`);
       }
 
-      // Get PDF as ArrayBuffer for react-pdf
-      const arrayBuffer = await response.arrayBuffer();
-      console.log('✅ PDF loaded, size:', arrayBuffer.byteLength, 'bytes');
-      setPdfData(arrayBuffer);
+      // Create Blob URL (more stable than ArrayBuffer for react-pdf)
+      const blob = await response.blob();
+      console.log('✅ PDF loaded, size:', blob.size, 'bytes');
+      const blobUrl = URL.createObjectURL(blob);
+      setPdfUrl(blobUrl);
     } catch (error) {
       console.error('❌ Error loading PDF:', error);
       alert(`Erro ao carregar o arquivo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -73,7 +83,10 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
   };
 
   const handleBack = () => {
-    setPdfData(null);
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
+    }
     setSelectedFile(null);
     setNumPages(null);
     setPageNumber(1);
@@ -140,11 +153,11 @@ const FilesViewerModal = ({ onClose }: FilesViewerModalProps) => {
                   <p className="text-gray-600 mt-4 text-lg">Carregando arquivo...</p>
                 </div>
               </div>
-            ) : pdfData ? (
+            ) : pdfUrl ? (
               <>
                 <div className="flex-1 overflow-auto flex items-center justify-center bg-gray-100 p-4">
                   <Document
-                    file={{ data: pdfData }}
+                    file={pdfUrl}
                     onLoadSuccess={onDocumentLoadSuccess}
                     onLoadError={onDocumentLoadError}
                     loading={
