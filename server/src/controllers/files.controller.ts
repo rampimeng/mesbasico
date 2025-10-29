@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
   }
 });
 
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (req: any, file: any, cb: multer.FileFilterCallback) => {
   if (file.mimetype === 'application/pdf') {
     cb(null, true);
   } else {
@@ -40,7 +40,7 @@ export const uploadFile = async (req: Request, res: Response) => {
   try {
     const { companyId } = req.user!;
     const { name, description, groupIds } = req.body;
-    const file = req.file;
+    const file = (req as any).file;
 
     if (!file) {
       return res.status(400).json({
@@ -227,8 +227,10 @@ export const getOperatorFiles = async (req: Request, res: Response) => {
     // Get unique files (a file may be linked to multiple groups the operator has)
     const filesMap = new Map();
     for (const fg of fileGroups || []) {
-      if (fg.file && !filesMap.has(fg.file.id)) {
-        filesMap.set(fg.file.id, fg.file);
+      // Handle case where file might be an array (Supabase behavior)
+      const fileData = Array.isArray(fg.file) ? fg.file[0] : fg.file;
+      if (fileData && !filesMap.has(fileData.id)) {
+        filesMap.set(fileData.id, fileData);
       }
     }
 
