@@ -4,8 +4,8 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { filesService } from '@/services/filesService';
 import { File as FileType } from '@/types';
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Configure PDF.js worker - use local worker file
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.mjs';
 
 interface FilesViewerModalProps {
   onClose: () => void;
