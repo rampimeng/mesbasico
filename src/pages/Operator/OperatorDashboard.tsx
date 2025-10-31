@@ -537,8 +537,93 @@ const OperatorDashboard = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-md">
-        <div className="max-w-full mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
+        <div className="max-w-full mx-auto px-3 py-3 sm:px-6 lg:px-8 sm:py-4">
+          {/* Mobile Layout - Stack vertically */}
+          <div className="flex flex-col gap-3 lg:hidden">
+            {/* Top row: Logo, Title, and Essential Actions */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {company?.logoUrl && (
+                  <img
+                    src={company.logoUrl}
+                    alt="Logo da Empresa"
+                    className="h-8 sm:h-10 object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                )}
+                <div>
+                  <h1 className="text-lg sm:text-xl font-bold text-gray-900">
+                    Painel do Operador
+                  </h1>
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    {user?.name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Essential mobile actions */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowHelpChainModal(true)}
+                  className="bg-teal-600 hover:bg-teal-700 text-white p-2 rounded-lg transition-colors"
+                  title="Cadeia de Ajuda"
+                >
+                  <LifeBuoy className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleLogoutClick}
+                  className="btn-secondary p-2"
+                  title="Sair"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Second row: Compact Timer Cards */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {/* Session Timer - Compact */}
+              <div className="bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-300 flex-shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-blue-600" />
+                  <div>
+                    <p className="text-[10px] text-blue-600 font-semibold">Tempo Ativo</p>
+                    <p className="text-sm font-bold text-blue-700 tabular-nums">{sessionDuration}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* General Pause - Compact */}
+              {generalPause && (
+                <div className="bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-400 animate-pulse flex-shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-orange-600" />
+                    <div>
+                      <p className="text-[10px] text-orange-600 font-semibold">Pausa Geral</p>
+                      <p className="text-[10px] font-semibold text-orange-800 truncate max-w-[80px]">{generalPause.reasonName}</p>
+                      <p className="text-sm font-bold text-orange-700 tabular-nums">{formatPauseDuration()}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Current Time - Compact */}
+              <div className="bg-green-50 px-3 py-1.5 rounded-lg border border-green-300 flex-shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-green-600" />
+                  <div>
+                    <p className="text-[10px] text-green-600 font-semibold">Hora Atual</p>
+                    <p className="text-sm font-bold text-green-700 tabular-nums">{formatCurrentTime()}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Layout - Original horizontal layout */}
+          <div className="hidden lg:flex items-center justify-between">
             <div className="flex items-center gap-4">
               {company?.logoUrl && (
                 <img
@@ -551,7 +636,7 @@ const OperatorDashboard = () => {
                 />
               )}
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                <h1 className="text-2xl xl:text-3xl font-bold text-gray-900">
                   Painel do Operador
                 </h1>
                 <p className="text-gray-600 mt-1">
@@ -606,7 +691,7 @@ const OperatorDashboard = () => {
                 title="Cadeia de Ajuda"
               >
                 <LifeBuoy className="w-5 h-5" />
-                <span className="hidden sm:inline">Cadeia de Ajuda</span>
+                <span>Cadeia de Ajuda</span>
               </button>
               <button
                 onClick={toggleFullscreen}
@@ -618,7 +703,7 @@ const OperatorDashboard = () => {
                 ) : (
                   <Maximize className="w-5 h-5" />
                 )}
-                <span className="hidden sm:inline">
+                <span>
                   {isFullscreen ? 'Tela Normal' : 'Tela Cheia'}
                 </span>
               </button>
@@ -627,14 +712,14 @@ const OperatorDashboard = () => {
                 className="btn-secondary flex items-center gap-2"
               >
                 <RefreshCw className="w-5 h-5" />
-                <span className="hidden sm:inline">Atualizar</span>
+                <span>Atualizar</span>
               </button>
               <button
                 onClick={handleLogoutClick}
                 className="btn-secondary flex items-center gap-2"
               >
                 <LogOut className="w-5 h-5" />
-                <span className="hidden sm:inline">Sair</span>
+                <span>Sair</span>
               </button>
             </div>
           </div>
@@ -642,57 +727,57 @@ const OperatorDashboard = () => {
       </header>
 
       {/* Quick Actions */}
-      <div className="max-w-full mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="max-w-full mx-auto px-3 py-4 sm:px-6 lg:px-8 sm:py-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
           {!shiftIsActive ? (
             <button
               onClick={handleStartShift}
-              className="btn-success btn-lg flex items-center justify-center gap-3"
+              className="btn-success btn-lg flex items-center justify-center gap-2 sm:gap-3 min-h-[56px] sm:min-h-[64px] text-base sm:text-lg"
             >
-              <Play className="w-8 h-8" />
-              <span>Iniciar Turno</span>
+              <Play className="w-6 h-6 sm:w-8 sm:h-8" />
+              <span className="font-bold">Iniciar Turno</span>
             </button>
           ) : (
             <button
               onClick={handleEndShift}
-              className="btn-danger btn-lg flex items-center justify-center gap-3"
+              className="btn-danger btn-lg flex items-center justify-center gap-2 sm:gap-3 min-h-[56px] sm:min-h-[64px] text-base sm:text-lg"
             >
-              <LogOut className="w-8 h-8" />
-              <span>Encerrar Turno</span>
+              <LogOut className="w-6 h-6 sm:w-8 sm:h-8" />
+              <span className="font-bold">Encerrar Turno</span>
             </button>
           )}
 
           <button
             onClick={handlePauseAll}
             disabled={!anyMachineActive}
-            className="btn-warning btn-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-warning btn-lg flex items-center justify-center gap-2 sm:gap-3 disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] sm:min-h-[64px] text-base sm:text-lg"
           >
-            <AlertTriangle className="w-8 h-8" />
-            <span>PAUSA GERAL</span>
+            <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8" />
+            <span className="font-bold">PAUSA GERAL</span>
           </button>
 
           <button
             onClick={handleAddCycle}
             disabled={!anyMachineActive}
-            className="btn-primary btn-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary btn-lg flex items-center justify-center gap-2 sm:gap-3 disabled:opacity-50 disabled:cursor-not-allowed min-h-[56px] sm:min-h-[64px]"
           >
             <div className="text-center">
-              <div className="text-3xl font-bold">{todayCycles}</div>
-              <div className="text-sm">Adicionar Giro</div>
+              <div className="text-2xl sm:text-3xl font-bold">{todayCycles}</div>
+              <div className="text-xs sm:text-sm font-semibold">Adicionar Giro</div>
             </div>
           </button>
         </div>
 
         {/* Blocked Message */}
         {blockedMessage && (
-          <div className="bg-yellow-50 border-2 border-yellow-400 text-yellow-800 px-6 py-4 rounded-xl mb-6 flex items-start gap-3">
-            <AlertTriangle className="w-6 h-6 flex-shrink-0 mt-0.5" />
+          <div className="bg-yellow-50 border-2 border-yellow-400 text-yellow-800 px-4 py-3 sm:px-6 sm:py-4 rounded-xl mb-4 sm:mb-6 flex items-start gap-2 sm:gap-3">
+            <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-lg">Acesso Bloqueado</p>
-              <p className="mt-1">{blockedMessage}</p>
+              <p className="font-semibold text-base sm:text-lg">Acesso Bloqueado</p>
+              <p className="mt-1 text-sm sm:text-base">{blockedMessage}</p>
               <button
                 onClick={() => setBlockedMessage('')}
-                className="mt-3 btn-secondary"
+                className="mt-3 btn-secondary text-sm sm:text-base px-3 py-2"
               >
                 Entendi
               </button>
@@ -701,7 +786,7 @@ const OperatorDashboard = () => {
         )}
 
         {/* Machines Grid - Responsivo */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-2 md:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-4">
           {machines.map((machine) => (
             <MachineCard key={machine.id} machine={machine} />
           ))}
@@ -753,9 +838,9 @@ const OperatorDashboard = () => {
 
       {/* Toast Notification */}
       {notification && (
-        <div className="fixed top-4 right-4 z-50 animate-fade-in">
+        <div className="fixed top-2 left-2 right-2 sm:top-4 sm:right-4 sm:left-auto z-50 animate-fade-in">
           <div
-            className={`px-6 py-4 rounded-lg shadow-2xl border-2 flex items-center gap-3 min-w-[300px] max-w-md ${
+            className={`px-4 py-3 sm:px-6 sm:py-4 rounded-lg shadow-2xl border-2 flex items-center gap-2 sm:gap-3 sm:min-w-[300px] max-w-md mx-auto sm:mx-0 ${
               notification.type === 'success'
                 ? 'bg-green-50 border-green-400 text-green-800'
                 : notification.type === 'error'
@@ -764,7 +849,7 @@ const OperatorDashboard = () => {
             }`}
           >
             <div className="flex-1">
-              <p className="font-semibold text-lg">{notification.message}</p>
+              <p className="font-semibold text-sm sm:text-base lg:text-lg">{notification.message}</p>
             </div>
           </div>
         </div>

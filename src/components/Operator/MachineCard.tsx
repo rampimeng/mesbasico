@@ -168,13 +168,13 @@ const MachineCard = ({ machine }: MachineCardProps) => {
 
   return (
     <>
-      <div className={`border-3 ${getStatusColor()} transition-all duration-300 rounded-lg p-2 lg:p-4`}>
+      <div className={`border-3 ${getStatusColor()} transition-all duration-300 rounded-lg p-3 sm:p-3 lg:p-4`}>
         {/* Machine Header */}
-        <div className="mb-2">
-          <div className="flex items-start justify-between gap-1 mb-1">
-            <h3 className="text-base lg:text-xl xl:text-2xl font-bold text-gray-900 leading-tight">{machine.name}</h3>
+        <div className="mb-2 sm:mb-2.5">
+          <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-1">
+            <h3 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 leading-tight">{machine.name}</h3>
             <div
-              className={`inline-flex items-center px-1.5 py-0.5 lg:px-3 lg:py-1 rounded-full text-white font-semibold text-[9px] lg:text-xs whitespace-nowrap flex-shrink-0 ${
+              className={`inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 lg:px-3 lg:py-1 rounded-full text-white font-semibold text-[10px] sm:text-xs whitespace-nowrap flex-shrink-0 ${
                 machine.status === MachineStatus.NORMAL_RUNNING
                   ? 'bg-green-500'
                   : machine.status === MachineStatus.STOPPED
@@ -193,39 +193,39 @@ const MachineCard = ({ machine }: MachineCardProps) => {
                 : 'Oci'}
             </div>
           </div>
-          <p className="text-gray-600 text-[10px] lg:text-sm">{machine.code}</p>
+          <p className="text-gray-600 text-[11px] sm:text-xs lg:text-sm">{machine.code}</p>
         </div>
 
         {/* Time Display */}
-        <div className="grid grid-cols-2 gap-1.5 lg:gap-3 mb-2">
-          <div className="bg-blue-50 p-1.5 lg:p-3 rounded text-center">
-            <Clock className="w-3 h-3 lg:w-5 lg:h-5 text-blue-600 mx-auto mb-0.5" />
-            <p className="text-[8px] lg:text-xs text-blue-600">Ativo</p>
-            <p className="text-xs lg:text-xl font-bold text-blue-700">{formatTime(activeTime)}</p>
+        <div className="grid grid-cols-2 gap-2 sm:gap-2.5 lg:gap-3 mb-2 sm:mb-2.5">
+          <div className="bg-blue-50 p-2 sm:p-2.5 lg:p-3 rounded text-center">
+            <Clock className="w-4 h-4 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-blue-600 mx-auto mb-0.5" />
+            <p className="text-[9px] sm:text-[10px] lg:text-xs text-blue-600 font-medium">Ativo</p>
+            <p className="text-sm sm:text-base lg:text-xl font-bold text-blue-700 tabular-nums">{formatTime(activeTime)}</p>
           </div>
-          <div className="bg-purple-50 p-1.5 lg:p-3 rounded text-center">
-            <Timer className="w-3 h-3 lg:w-5 lg:h-5 text-purple-600 mx-auto mb-0.5" />
-            <p className="text-[8px] lg:text-xs text-purple-600">Total</p>
-            <p className="text-xs lg:text-xl font-bold text-purple-700">{formatTime(totalExpectedTime)}</p>
+          <div className="bg-purple-50 p-2 sm:p-2.5 lg:p-3 rounded text-center">
+            <Timer className="w-4 h-4 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-purple-600 mx-auto mb-0.5" />
+            <p className="text-[9px] sm:text-[10px] lg:text-xs text-purple-600 font-medium">Total</p>
+            <p className="text-sm sm:text-base lg:text-xl font-bold text-purple-700 tabular-nums">{formatTime(totalExpectedTime)}</p>
           </div>
         </div>
 
         {/* Machine Control Button */}
-        <div className="mb-2">
+        <div className="mb-2 sm:mb-2.5">
           {machine.status === MachineStatus.IDLE || machine.status === MachineStatus.STOPPED ? (
             <button
               onClick={handleStartMachine}
-              className="btn-success w-full py-1.5 lg:py-3 flex items-center justify-center gap-1.5 text-xs lg:text-base font-semibold"
+              className="btn-success w-full py-2.5 sm:py-3 lg:py-3 flex items-center justify-center gap-2 text-sm sm:text-base lg:text-base font-semibold min-h-[44px]"
             >
-              <Play className="w-3.5 h-3.5 lg:w-5 lg:h-5" />
+              <Play className="w-4 h-4 sm:w-5 sm:h-5 lg:w-5 lg:h-5" />
               <span>{machine.status === MachineStatus.STOPPED ? 'Reiniciar' : 'Iniciar'}</span>
             </button>
           ) : (
             <button
               onClick={handleStopMachine}
-              className="btn-danger w-full py-1.5 lg:py-3 flex items-center justify-center gap-1.5 text-xs lg:text-base font-semibold"
+              className="btn-danger w-full py-2.5 sm:py-3 lg:py-3 flex items-center justify-center gap-2 text-sm sm:text-base lg:text-base font-semibold min-h-[44px]"
             >
-              <Square className="w-3.5 h-3.5 lg:w-5 lg:h-5" />
+              <Square className="w-4 h-4 sm:w-5 sm:h-5 lg:w-5 lg:h-5" />
               <span>Parar</span>
             </button>
           )}
@@ -234,8 +234,8 @@ const MachineCard = ({ machine }: MachineCardProps) => {
         {/* Matrix Buttons - Side by Side */}
         {hasMatrices && (
           <div>
-            <p className="text-[10px] lg:text-sm font-semibold text-gray-700 mb-1">Matrizes:</p>
-            <div className="grid grid-cols-4 gap-1 lg:gap-2">
+            <p className="text-[11px] sm:text-xs lg:text-sm font-semibold text-gray-700 mb-1.5">Matrizes:</p>
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2 lg:gap-2">
               {matrices.map((matrix, index) => {
                 const isDisabled = machine.status === MachineStatus.IDLE;
                 console.log(`🔘 Matrix ${matrix.matrixNumber}:`, {
@@ -254,7 +254,7 @@ const MachineCard = ({ machine }: MachineCardProps) => {
                     }}
                     disabled={isDisabled}
                     className={`
-                      aspect-square rounded font-bold text-sm lg:text-xl transition-all
+                      aspect-square rounded font-bold text-base sm:text-lg lg:text-xl transition-all min-h-[44px]
                       disabled:opacity-50 disabled:cursor-not-allowed
                       ${
                         matrix.status === MatrixStatus.RUNNING
