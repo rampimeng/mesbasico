@@ -21,6 +21,7 @@ export interface LoginResponse {
     name: string;
     logoUrl?: string;
     dashboardToken: string;
+    enabledModules?: string[];
   };
 }
 

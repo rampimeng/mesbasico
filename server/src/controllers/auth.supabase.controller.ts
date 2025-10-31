@@ -113,11 +113,20 @@ export class AuthSupabaseController {
       };
 
       if (user.company) {
+        // Parse enabledModules se vier como string JSON
+        let enabledModules: string[] = [];
+        if (user.company.enabledModules) {
+          enabledModules = Array.isArray(user.company.enabledModules)
+            ? user.company.enabledModules
+            : (typeof user.company.enabledModules === 'string' ? JSON.parse(user.company.enabledModules) : []);
+        }
+
         response.company = {
           id: user.company.id,
           name: user.company.name,
           logoUrl: user.company.logoUrl || undefined,
           dashboardToken: user.company.dashboardToken,
+          enabledModules: enabledModules,
         };
       }
 
