@@ -68,6 +68,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
           name: response.company.name,
           cnpj: '', // Não vem na resposta de login
           active: true,
+          enabledModules: [], // Módulos habilitados
           logoUrl: response.company.logoUrl,
           dashboardToken: response.company.dashboardToken,
           createdAt: new Date(),
@@ -154,6 +155,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
           name: storedCompany.name,
           cnpj: '',
           active: true,
+          enabledModules: [], // Módulos habilitados
           logoUrl: storedCompany.logoUrl,
           dashboardToken: storedCompany.dashboardToken,
           createdAt: new Date(),
@@ -184,6 +186,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
             name: storedCompany.name,
             cnpj: '',
             active: true,
+            enabledModules: [], // Módulos habilitados
             logoUrl: storedCompany.logoUrl,
             dashboardToken: storedCompany.dashboardToken,
             createdAt: new Date(),
