@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Wrench, Settings, Package, Calendar, ClipboardList, Truck, Plus, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Wrench, Settings, Package, Calendar, ClipboardList, Truck, Plus, AlertCircle } from 'lucide-react';
 import { maintenanceService, MaintenanceEquipment, MaintenanceComponent, MaintenancePlan, WorkOrder, Supplier } from '@/services/maintenanceService';
 
 const MaintenancePage = () => {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'equipment' | 'components' | 'plans' | 'workOrders' | 'suppliers'>('equipment');
   
   const [equipment, setEquipment] = useState<MaintenanceEquipment[]>([]);
