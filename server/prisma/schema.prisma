@@ -24,6 +24,7 @@ model Company {
   logoUrl        String?
   dashboardToken String   @unique
   active         Boolean  @default(true)
+  enabledModules Json     @default("[]") // Array de módulos habilitados: ["MES", "QUALITY", etc.]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

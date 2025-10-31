@@ -92,6 +92,7 @@ export const createCompany = async (req: Request, res: Response) => {
         logoUrl: logoUrl || null,
         dashboardToken,
         active: true,
+        enabledModules: [], // Inicializa sem módulos habilitados
       })
       .select()
       .single();
@@ -352,6 +353,82 @@ export const togglePDCA = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to toggle PDCA feature',
+    });
+  }
+};
+
+// Toggle module for a company (enable/disable MES, QUALITY, etc.)
+export const toggleModule = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { module } = req.body;
+
+    if (!module || typeof module !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Module name is required',
+      });
+    }
+
+    // Get current enabledModules
+    const { data: company, error: fetchError } = await supabase
+      .from('companies')
+      .select('enabledModules')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      return res.status(404).json({
+        success: false,
+        error: 'Company not found',
+      });
+    }
+
+    // Parse enabledModules (it comes as JSON)
+    let enabledModules: string[] = [];
+    if (company.enabledModules) {
+      enabledModules = Array.isArray(company.enabledModules)
+        ? company.enabledModules
+        : JSON.parse(company.enabledModules as any);
+    }
+
+    // Toggle module
+    const moduleIndex = enabledModules.indexOf(module);
+    if (moduleIndex > -1) {
+      // Module is enabled, disable it
+      enabledModules.splice(moduleIndex, 1);
+    } else {
+      // Module is disabled, enable it
+      enabledModules.push(module);
+    }
+
+    // Update company
+    const { data: updatedCompany, error: updateError } = await supabase
+      .from('companies')
+      .update({
+        enabledModules: enabledModules,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      return res.status(400).json({
+        success: false,
+        error: updateError.message,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: updatedCompany,
+      message: `Module "${module}" ${moduleIndex > -1 ? 'disabled' : 'enabled'} successfully`,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to toggle module',
     });
   }
 };

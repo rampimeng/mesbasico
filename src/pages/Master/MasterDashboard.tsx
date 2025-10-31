@@ -137,6 +137,17 @@ const MasterDashboard = () => {
     }
   };
 
+  const handleToggleModule = async (companyId: string, module: string) => {
+    try {
+      await companiesService.toggleModule(companyId, module);
+      await loadCompanies();
+      setError('');
+    } catch (err: any) {
+      setError(err.message || `Erro ao alterar status do módulo ${module}`);
+      alert(err.message || `Erro ao alterar status do módulo ${module}`);
+    }
+  };
+
   const handleAccessCompany = (company: ExtendedCompany) => {
     // Master pode acessar qualquer empresa (ativa ou inativa)
     // Criar um usuário temporário admin para essa empresa
@@ -333,28 +344,55 @@ const MasterDashboard = () => {
                           <p><strong>Telefone:</strong> {company.contactPhone}</p>
                         </div>
 
-                        <div className="mt-3 flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-700">PDCA:</span>
-                          <button
-                            onClick={() => handleTogglePDCA(company.id)}
-                            className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
-                              company.pdcaEnabled
-                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
-                          >
-                            {company.pdcaEnabled ? (
-                              <>
-                                <CheckCircle className="w-3 h-3" />
-                                Habilitado
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="w-3 h-3" />
-                                Desabilitado
-                              </>
-                            )}
-                          </button>
+                        {/* Módulos Habilitados */}
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-700">Módulo MES:</span>
+                            <button
+                              onClick={() => handleToggleModule(company.id, 'MES')}
+                              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                company.enabledModules?.includes('MES')
+                                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {company.enabledModules?.includes('MES') ? (
+                                <>
+                                  <CheckCircle className="w-3 h-3" />
+                                  Habilitado
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="w-3 h-3" />
+                                  Desabilitado
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-700">PDCA:</span>
+                            <button
+                              onClick={() => handleTogglePDCA(company.id)}
+                              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                company.pdcaEnabled
+                                  ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {company.pdcaEnabled ? (
+                                <>
+                                  <CheckCircle className="w-3 h-3" />
+                                  Habilitado
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="w-3 h-3" />
+                                  Desabilitado
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
 
                         {company.dashboardToken && (

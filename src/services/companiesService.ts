@@ -150,6 +150,23 @@ export const companiesService = {
     return data.data;
   },
 
+  // Toggle module for a company (MES, QUALITY, etc.)
+  async toggleModule(id: string, module: string): Promise<Company> {
+    const response = await fetch(`${API_URL}/companies/${id}/toggle-module`, {
+      method: 'PATCH',
+      headers: getAuthHeader(),
+      body: JSON.stringify({ module }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to toggle module');
+    }
+
+    return data.data;
+  },
+
   // Delete company
   async delete(id: string): Promise<void> {
     const response = await fetch(`${API_URL}/companies/${id}`, {

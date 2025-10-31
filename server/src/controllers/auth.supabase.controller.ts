@@ -46,6 +46,19 @@ export class AuthSupabaseController {
         return sendUnauthorized(res, 'Conta da empresa desativada');
       }
 
+      // Verificar se o módulo MES está habilitado para a empresa (exceto para MASTER)
+      if (user.role !== 'MASTER' && user.company) {
+        const enabledModules = user.company.enabledModules || [];
+        // Parse enabledModules se vier como string JSON
+        const modules = Array.isArray(enabledModules)
+          ? enabledModules
+          : (typeof enabledModules === 'string' ? JSON.parse(enabledModules) : []);
+
+        if (!modules.includes('MES')) {
+          return sendUnauthorized(res, 'A empresa está inativa.');
+        }
+      }
+
       // Verificar MFA se necessário
       if (user.mfaEnabled) {
         if (!mfaCode) {

@@ -7,6 +7,7 @@ import {
   toggleCompanyStatus,
   changeAdminPassword,
   togglePDCA,
+  toggleModule,
   deleteCompany,
 } from '../controllers/companies.controller';
 import { authenticate, authorize } from '../middleware/auth';
@@ -26,6 +27,7 @@ router.put('/:id', updateCompany);
 router.patch('/:id/toggle-status', toggleCompanyStatus);
 router.patch('/:id/change-admin-password', changeAdminPassword);
 router.patch('/:id/toggle-pdca', togglePDCA);
+router.patch('/:id/toggle-module', toggleModule);
 router.delete('/:id', deleteCompany);
 
 export default router;

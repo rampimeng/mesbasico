@@ -24,6 +24,7 @@ export interface Company {
   name: string;
   cnpj: string;
   active: boolean;
+  enabledModules: string[]; // Array de módulos habilitados: ["MES", "QUALITY", etc.]
   logoUrl?: string; // URL do logotipo da empresa
   dashboardToken?: string; // Token único para acesso ao dashboard de controle
   pdcaEnabled?: boolean; // Habilita/desabilita funcionalidade PDCA para esta empresa
