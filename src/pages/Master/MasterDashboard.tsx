@@ -1,3 +1,7 @@
+/**
+ * Master Dashboard - Gestão de Empresas e Módulos SaaS
+ * Permite ao usuário Master gerenciar empresas e habilitar/desabilitar módulos
+ */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
