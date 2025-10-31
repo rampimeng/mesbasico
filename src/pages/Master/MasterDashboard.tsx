@@ -375,6 +375,30 @@ const MasterDashboard = () => {
                           </div>
 
                           <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-700">Módulo Manutenção:</span>
+                            <button
+                              onClick={() => handleToggleModule(company.id, 'MANUTENÇÃO')}
+                              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                company.enabledModules?.includes('MANUTENÇÃO')
+                                  ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {company.enabledModules?.includes('MANUTENÇÃO') ? (
+                                <>
+                                  <CheckCircle className="w-3 h-3" />
+                                  Habilitado
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="w-3 h-3" />
+                                  Desabilitado
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-gray-700">PDCA:</span>
                             <button
                               onClick={() => handleTogglePDCA(company.id)}

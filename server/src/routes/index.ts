@@ -10,6 +10,7 @@ import productionRoutes from './production.routes';
 import analyticsRoutes from './analytics.routes';
 import auditRoutes from './audit.routes';
 import maintenanceRoutes from './maintenance.routes';
+import maintenanceModuleRoutes from './maintenance-module.routes';
 import controlDashboardRoutes from './control-dashboard.routes';
 import migrationsRoutes from './migrations.routes';
 import filesRoutes from './files.routes';
@@ -69,6 +70,7 @@ router.use('/production', productionRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/audit', auditRoutes);
 router.use('/maintenance', maintenanceRoutes);
+router.use('/maintenance-module', maintenanceModuleRoutes);
 router.use('/migrations', migrationsRoutes);
 router.use('/files', filesRoutes);
 

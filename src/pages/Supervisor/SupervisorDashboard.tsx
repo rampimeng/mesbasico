@@ -8,6 +8,7 @@ import RegistrationPage from '@/pages/Admin/RegistrationPage';
 import PDCAPage from '@/pages/Admin/PDCAPage';
 import AuditPage from '@/pages/Admin/AuditPage';
 import FilesManagement from '@/pages/Admin/FilesManagement';
+import MaintenancePage from '@/pages/Admin/MaintenancePage';
 import { ArrowLeft } from 'lucide-react';
 
 const SupervisorDashboard = () => {
@@ -88,6 +89,9 @@ const SupervisorDashboard = () => {
               {user?.role === 'ADMIN' && (
                 <>
                   <Route path="/settings" element={<RegistrationPage />} />
+                  {company?.enabledModules?.includes('MANUTENÇÃO') && (
+                    <Route path="/maintenance" element={<MaintenancePage />} />
+                  )}
                   {company?.pdcaEnabled && <Route path="/pdca" element={<PDCAPage />} />}
                   <Route path="/audit" element={<AuditPage />} />
                   <Route path="/files" element={<FilesManagement />} />

@@ -29,14 +29,19 @@ model Company {
   updatedAt      DateTime @updatedAt
 
   // Relações
-  users       User[]
-  groups      Group[]
-  machines    Machine[]
-  shifts      Shift[]
-  stopReasons StopReason[]
-  auditLogs   AuditLog[]
-  pdcaPlans   PdcaPlan[]
-  files       File[]
+  users                User[]
+  groups               Group[]
+  machines             Machine[]
+  shifts               Shift[]
+  stopReasons          StopReason[]
+  auditLogs            AuditLog[]
+  pdcaPlans            PdcaPlan[]
+  files                File[]
+  maintenanceEquipment MaintenanceEquipment[]
+  maintenanceComponents MaintenanceComponent[]
+  maintenancePlans     MaintenancePlan[]
+  workOrders           WorkOrder[]
+  suppliers            Supplier[]
 
   @@map("companies")
 }
@@ -89,10 +94,14 @@ model User {
   updatedAt  DateTime @updatedAt
 
   // Relações
-  company           Company?          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  operatorGroups    OperatorGroup[]
-  auditLogs         AuditLog[]
-  machineActivities MachineActivity[]
+  company                 Company?              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  operatorGroups          OperatorGroup[]
+  auditLogs               AuditLog[]
+  machineActivities       MachineActivity[]
+  maintenanceEquipmentResponsible MaintenanceEquipment[] @relation("MaintenanceEquipmentResponsible")
+  maintenancePlanResponsible MaintenancePlan[]
+  workOrdersAssigned      WorkOrder[]          @relation("WorkOrderAssigned")
+  workOrdersApproved      WorkOrder[]          @relation("WorkOrderApprover")
 
   @@index([companyId])
   @@index([email])
@@ -433,4 +442,229 @@ model FileGroup {
   @@index([fileId])
   @@index([groupId])
   @@map("file_groups")
+}
+
+// ============================================
+// MÓDULO DE MANUTENÇÃO
+// ============================================
+
+// Equipamentos para Manutenção (vinculado a Machine do MES)
+model MaintenanceEquipment {
+  id              String   @id @default(uuid())
+  companyId       String
+  machineId       String?  // Vinculação opcional com Machine do MES
+  code            String
+  name            String
+  area            String?  // Área/Linha/Setor
+  line            String?
+  sector          String?
+  manufacturer    String?  // Fabricante
+  model           String?  // Modelo
+  serialNumber    String?  // Número de série
+  acquisitionDate DateTime? // Data de aquisição
+  mtbf            Float?   // Tempo médio entre falhas (horas)
+  mttr            Float?   // Tempo médio de reparo (horas)
+  responsibleId   String?  // Responsável técnico (User.id)
+  status          String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relações
+  company          Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  machine          Machine?             @relation(fields: [machineId], references: [id], onDelete: SetNull)
+  responsible      User?                @relation("MaintenanceEquipmentResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
+  maintenancePlans MaintenancePlan[]
+  workOrders       WorkOrder[]
+  components       MaintenanceComponent[]
+  workOrderMaterials WorkOrderMaterial[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([machineId])
+  @@index([status])
+  @@map("maintenance_equipment")
+}
+
+// Componentes / Peças / Itens de manutenção
+model MaintenanceComponent {
+  id               String   @id @default(uuid())
+  companyId        String
+  equipmentId      String?  // Componente pode estar vinculado a um equipamento específico
+  code             String
+  description      String
+  unitOfMeasure    String   // Unidade de medida
+  currentStock     Float    @default(0) // Estoque atual
+  minimumStock     Float    @default(0) // Estoque mínimo
+  unitCost         Float    @default(0) // Custo unitário
+  defaultSupplierId String? // Fornecedor padrão
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relações
+  company         Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  equipment       MaintenanceEquipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+  defaultSupplier Supplier?          @relation(fields: [defaultSupplierId], references: [id], onDelete: SetNull)
+  workOrderMaterials WorkOrderMaterial[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([equipmentId])
+  @@map("maintenance_components")
+}
+
+// Planos de Manutenção
+enum MaintenanceType {
+  PREVENTIVE
+  CORRECTIVE
+  PREDICTIVE
+  LUBRICATION
+  CALIBRATION
+}
+
+enum MaintenanceFrequencyType {
+  DAYS
+  HOURS
+  CYCLES
+  COUNTER
+}
+
+model MaintenancePlan {
+  id                  String                   @id @default(uuid())
+  companyId           String
+  equipmentId         String
+  type                MaintenanceType
+  frequencyType       MaintenanceFrequencyType
+  frequencyValue      Int                      // Valor da frequência (ex: 30 dias, 100 horas)
+  name                String
+  description         String?
+  instructions        String?                  // Instruções detalhadas
+  checklist           Json?                    // Checklist de execução (array de itens)
+  responsibleId       String?                  // Responsável pela execução
+  documents           Json?                    // URLs de documentos anexos
+  active              Boolean                  @default(true)
+  lastExecutionDate   DateTime?
+  nextExecutionDate   DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  // Relações
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  equipment  MaintenanceEquipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  responsible User?      @relation("MaintenancePlanResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
+  workOrders WorkOrder[]
+
+  @@index([companyId])
+  @@index([equipmentId])
+  @@index([type])
+  @@index([active])
+  @@index([nextExecutionDate])
+  @@map("maintenance_plans")
+}
+
+// Ordens de Serviço (OS)
+enum WorkOrderType {
+  CORRECTIVE
+  PREVENTIVE
+  EMERGENCY
+  INSPECTION
+}
+
+enum WorkOrderStatus {
+  OPEN
+  IN_PROGRESS
+  FINISHED
+  CANCELLED
+  APPROVED
+  PENDING_APPROVAL
+}
+
+model WorkOrder {
+  id                String           @id @default(uuid())
+  companyId         String
+  equipmentId       String
+  maintenancePlanId String?          // Se foi gerada de um plano
+  workOrderNumber   String           // Número da OS
+  type              WorkOrderType
+  status            WorkOrderStatus  @default(OPEN)
+  openedDate        DateTime         @default(now())
+  closedDate        DateTime?
+  failureCause      String?          // Causa da falha
+  intervention      String?          // Descrição da intervenção
+  executionTime     Int?             // Tempo de execução em minutos
+  downtime          Int?             // Tempo de parada em minutos
+  laborCost         Float            @default(0) // Custo de mão de obra
+  materialsCost     Float            @default(0) // Custo de peças
+  totalCost         Float            @default(0) // Custo total
+  assignedToId      String?          // Técnico responsável
+  approvedById      String?          // Aprovador
+  approvalDate      DateTime?
+  checklist         Json?            // Checklist de execução
+  signature         String?          // Assinatura do executor (base64)
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  // Relações
+  company         Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  equipment       MaintenanceEquipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  maintenancePlan MaintenancePlan?     @relation(fields: [maintenancePlanId], references: [id], onDelete: SetNull)
+  assignedTo      User?                @relation("WorkOrderAssigned", fields: [assignedToId], references: [id], onDelete: SetNull)
+  approvedBy      User?                @relation("WorkOrderApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  materials       WorkOrderMaterial[]
+
+  @@unique([companyId, workOrderNumber])
+  @@index([companyId])
+  @@index([equipmentId])
+  @@index([status])
+  @@index([type])
+  @@index([openedDate])
+  @@map("work_orders")
+}
+
+// Materiais utilizados na OS
+model WorkOrderMaterial {
+  id             String   @id @default(uuid())
+  workOrderId    String
+  componentId    String
+  equipmentId    String?  // Equipamento de onde foi retirado (para baixa de estoque)
+  quantity       Float
+  unitCost       Float
+  totalCost      Float
+  createdAt      DateTime @default(now())
+
+  // Relações
+  workOrder WorkOrder             @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  component MaintenanceComponent  @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  equipment MaintenanceEquipment? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+
+  @@index([workOrderId])
+  @@index([componentId])
+  @@map("work_order_materials")
+}
+
+// Fornecedores
+model Supplier {
+  id              String   @id @default(uuid())
+  companyId       String
+  corporateName   String   // Razão social
+  tradeName       String?  // Nome fantasia
+  cnpj            String?
+  email           String?
+  phone           String?
+  contactPerson   String?
+  serviceTypes    Json?    // Tipos de serviço prestado (array)
+  sla             Int?     // SLA de atendimento (horas)
+  address         String?
+  notes           String?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relações
+  company         Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  components      MaintenanceComponent[]
+
+  @@index([companyId])
+  @@index([active])
+  @@map("suppliers")
 }

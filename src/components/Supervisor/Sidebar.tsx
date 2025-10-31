@@ -11,6 +11,7 @@ import {
   ClipboardList,
   Tv,
   FileText,
+  Wrench,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -33,6 +34,13 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
     menuItems.push(
       { icon: Settings, label: 'Cadastros', path: '/admin/settings' }
     );
+
+    // Módulo de Manutenção só aparece se habilitado para a empresa
+    if (company?.enabledModules?.includes('MANUTENÇÃO')) {
+      menuItems.push(
+        { icon: Wrench, label: 'Manutenção', path: '/admin/maintenance' }
+      );
+    }
 
     // PDCA só aparece se habilitado para a empresa
     if (company?.pdcaEnabled) {
