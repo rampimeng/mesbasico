@@ -36,6 +36,14 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
     );
 
     // Módulo de Manutenção só aparece se habilitado para a empresa
+    // Debug: verificar enabledModules
+    console.log('🔍 Sidebar Debug:', {
+      companyId: company?.id,
+      enabledModules: company?.enabledModules,
+      hasMaintenance: company?.enabledModules?.includes('MANUTENÇÃO'),
+      companyObject: company,
+    });
+    
     if (company?.enabledModules?.includes('MANUTENÇÃO')) {
       menuItems.push(
         { icon: Wrench, label: 'Manutenção', path: '/admin/maintenance' }
