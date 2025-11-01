@@ -121,12 +121,6 @@ export class AuthSupabaseController {
             : (typeof user.company.enabledModules === 'string' ? JSON.parse(user.company.enabledModules) : []);
         }
 
-        console.log('🔍 Backend Login Debug:', {
-          companyId: user.company.id,
-          enabledModulesRaw: user.company.enabledModules,
-          enabledModulesParsed: enabledModules,
-        });
-
         response.company = {
           id: user.company.id,
           name: user.company.name,

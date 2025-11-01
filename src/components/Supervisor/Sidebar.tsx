@@ -12,6 +12,7 @@ import {
   Tv,
   FileText,
   Wrench,
+  Package,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -36,17 +37,17 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
     );
 
     // Módulo de Manutenção só aparece se habilitado para a empresa
-    // Debug: verificar enabledModules
-    console.log('🔍 Sidebar Debug:', {
-      companyId: company?.id,
-      enabledModules: company?.enabledModules,
-      hasMaintenance: company?.enabledModules?.includes('MANUTENÇÃO'),
-      companyObject: company,
-    });
-    
     if (company?.enabledModules?.includes('MANUTENÇÃO')) {
       menuItems.push(
         { icon: Wrench, label: 'Manutenção', path: '/admin/maintenance' }
+      );
+    }
+    
+    // Se tiver mais de 1 módulo, mostrar link para seleção de módulos
+    const moduleCount = (company?.enabledModules?.length || 0) + (company?.pdcaEnabled ? 1 : 0);
+    if (moduleCount > 1) {
+      menuItems.push(
+        { icon: Package, label: 'Módulos', path: '/admin/modules' }
       );
     }
 

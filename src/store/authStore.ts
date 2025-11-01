@@ -63,12 +63,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
       let company: Company | null = null;
       if (response.company) {
-        // Debug: verificar enabledModules no login
-        console.log('🔍 Login Debug - enabledModules recebido:', {
-          enabledModules: response.company.enabledModules,
-          companyId: response.company.id,
-        });
-        
         company = {
           id: response.company.id,
           name: response.company.name,
@@ -80,11 +74,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
           createdAt: new Date(),
           updatedAt: new Date(),
         };
-        
-        console.log('🔍 Login Debug - company criado:', {
-          enabledModules: company.enabledModules,
-          hasMaintenance: company.enabledModules?.includes('MANUTENÇÃO'),
-        });
       }
 
       set({

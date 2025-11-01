@@ -11,9 +11,11 @@ import AdminDashboard from '@/pages/Admin/AdminDashboard';
 import SupervisorDashboard from '@/pages/Supervisor/SupervisorDashboard';
 import OperatorDashboard from '@/pages/Operator/OperatorDashboard';
 import ControlDashboard from '@/pages/ControlDashboard';
+import ModuleSelectionPage from '@/pages/Admin/ModuleSelectionPage';
 
 // Components
 import ProtectedRoute from '@/components/ProtectedRoute';
+import AdminRedirect from '@/components/Admin/AdminRedirect';
 
 function App() {
   const { checkAuth } = useAuthStore();
@@ -48,6 +50,22 @@ function App() {
         />
       </Route>
 
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+            <AdminRedirect />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/modules"
+        element={
+          <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+            <ModuleSelectionPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/admin/*"
         element={
