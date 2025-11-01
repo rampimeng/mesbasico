@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { Settings, Wrench, TrendingUp, Building2, Package, ClipboardCheck } from 'lucide-react';
+import { Settings, Wrench, TrendingUp, Building2 } from 'lucide-react';
 
 interface ModuleInfo {
   id: string;
